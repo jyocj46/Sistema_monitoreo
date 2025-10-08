@@ -2,20 +2,21 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import TemperatureChart from '../components/TemperatureChart.vue';
 import ExportButtons from '../components/ExportButtons.vue';
 import '../assets/reports.css'; 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
 
-// Estados para los filtros
+
 const fechaInicio = ref('');
 const fechaFin = ref('');
 const filtroCuartoId = ref(''); // ID del cuarto seleccionado. Vacío para "Todos".
 const sortOrder = ref('DESC'); // 'DESC' (recientes) o 'ASC' (antiguos).
 
-// Estados del componente
-const cuartos = ref([]); // Almacenará la lista de cuartos de la API
+const cuartos = ref([]); 
 const resultados = ref([]);
+const promediosData = ref(null);
 const cargando = ref(false);
 const error = ref(null);
 const reporteGenerado = ref(false);
@@ -47,7 +48,32 @@ const toggleSortOrder = () => {
   }
 };
 
-// --- Lógica Principal (Actualizada) ---
+const formatChartData = (promedios) => {
+  if (!promedios || promedios.length === 0) return null;
+
+  const labels = [...new Set(promedios.map(p => p.fecha))].sort();
+  const datasets = [];
+  const cuartosEnData = [...new Set(promedios.map(p => p.cuarto_id))];
+
+  // Paleta de colores para las líneas de la gráfica
+  const colors = ['#6ac17b', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
+
+  cuartosEnData.forEach((cuartoId, index) => {
+    const datosDelCuarto = promedios.filter(p => p.cuarto_id === cuartoId);
+    datasets.push({
+      label: datosDelCuarto[0].cuarto_nombre,
+      data: labels.map(label => {
+        const datoParaFecha = datosDelCuarto.find(p => p.fecha === label);
+        return datoParaFecha ? datoParaFecha.temp_promedio : null;
+      }),
+      borderColor: colors[index % colors.length],
+      backgroundColor: colors[index % colors.length],
+      tension: 0.1,
+    });
+  });
+
+  return { labels, datasets };
+};
 
 const generarReporte = async () => {
   if (!fechaInicio.value || !fechaFin.value) {
@@ -58,28 +84,41 @@ const generarReporte = async () => {
   cargando.value = true;
   error.value = null;
   resultados.value = [];
+  promediosData.value = null;
   reporteGenerado.value = true;
 
   try {
-    // Construimos la URL con los parámetros dinámicos
-    let url = `${API_BASE}/lecturas?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}&sort=${sortOrder.value}`;
-
-    // Añadimos el filtro de cuarto SÓLO si se ha seleccionado uno
+    // --- Construimos las URLs para ambas peticiones ---
+    let baseUrl = `?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`;
     if (filtroCuartoId.value) {
-      url += `&cuarto_id=${filtroCuartoId.value}`;
+      baseUrl += `&cuarto_id=${filtroCuartoId.value}`;
     }
 
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Error del servidor: ${response.statusText}`);
+    const urlTabla = `${API_BASE}/lecturas${baseUrl}&sort=${sortOrder.value}`;
+    const urlGrafica = `${API_BASE}/lecturas/promedios${baseUrl}`;
+
+    // --- Hacemos las dos peticiones en paralelo para mayor eficiencia ---
+    const [responseTabla, responseGrafica] = await Promise.all([
+      fetch(urlTabla),
+      fetch(urlGrafica)
+    ]);
+
+    if (!responseTabla.ok) throw new Error(`Error al cargar tabla: ${responseTabla.statusText}`);
+    if (!responseGrafica.ok) throw new Error(`Error al cargar gráfica: ${responseGrafica.statusText}`);
     
-    const apiResponse = await response.json();
-    const data = apiResponse.data || [];
-    
-    resultados.value = data.map(lectura => ({
+    // --- Procesamos los resultados de la tabla ---
+    const apiResponseTabla = await responseTabla.json();
+    resultados.value = (apiResponseTabla.data || []).map(lectura => ({
       ...lectura,
       temperatura_c: parseFloat(lectura.temperatura_c),
       humedad_pct: parseFloat(lectura.humedad_pct),
     }));
+
+    // --- Procesamos los resultados de la gráfica ---
+    const apiResponseGrafica = await responseGrafica.json();
+    if (apiResponseGrafica.success) {
+      promediosData.value = formatChartData(apiResponseGrafica.data);
+    }
 
   } catch (e) {
     error.value = `No se pudo generar el reporte: ${e.message}`;
@@ -125,6 +164,14 @@ const generarReporte = async () => {
     </div>
 
     <div v-if="error" class="error-message">{{ error }}</div>
+
+    <div v-if="reporteGenerado && !cargando">
+    <TemperatureChart v-if="promediosData" :chart-data="promediosData" />
+      <div v-if="resultados.length > 0">
+        <div class="results-table">
+          </div>
+      </div>
+    </div>
 
     <div v-if="resultados.length > 0" class="results-section">
       <div class="results-header">

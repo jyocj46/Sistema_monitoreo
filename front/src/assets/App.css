@@ -20,7 +20,7 @@ body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto
 
 /* Layout */
 .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
-.sidebar { background: linear-gradient(180deg, #253525 0%, #1e2a1f 100%); color:#e5efe7; padding: 20px 16px; }
+.sidebar { background: linear-gradient(180deg, #253525 0%, #1e2a1f 100%); color:#e5efe7; padding: 20px 16px;position: sticky; top: 0; height: 100vh;  }
 .brand { display:flex; align-items:center; gap:10px; font-weight: 800; letter-spacing:.5px; font-size: 22px; padding: 8px 10px; background: rgba(255,255,255,.06); border-radius: 10px; }
 .menu { margin-top: 18px; display:flex; flex-direction:column; gap:6px; }
 .menu a { padding: 10px 12px; border-radius: 10px; color:#d5e6d8; text-decoration:none; cursor: default; }

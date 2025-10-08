@@ -14,12 +14,16 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "apexcharts": "^5.3.5",
     "axios": "^1.12.2",
+    "chart.js": "^4.5.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "mqtt": "^5.14.1",
     "vue": "^3.5.18",
-    "vue-router": "^4.5.1"
+    "vue-chartjs": "^5.3.2",
+    "vue-router": "^4.5.1",
+    "vue3-apexcharts": "^1.8.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

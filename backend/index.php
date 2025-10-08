@@ -92,9 +92,9 @@ try {
             break;
             
         case $path === '/cuartos' && $method === 'GET':
-        $result = $controller->getCuartos();
-        echo json_encode($result);
-        break;   
+             $result = $controller->getCuartos();
+             echo json_encode($result);
+             break;   
 
         case $path === '/lecturas' && $method === 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
@@ -112,7 +112,17 @@ try {
             $periodo = $_GET['periodo'] ?? 'DAY';
             $result = $controller->getEstadisticas($cuartoId, $periodo);
             echo json_encode($result);
+            break;  
+        
+        case $path === '/lecturas/grafica' && $method === 'GET':
+            $result = $controller->getLecturasParaGrafica();
+            echo json_encode($result);
             break;    
+            
+        case $path === '/lecturas/promedios' && $method === 'GET':
+        $result = $controller->getPromedios();
+        echo json_encode($result);
+        break;    
 
         default:
             http_response_code(404);

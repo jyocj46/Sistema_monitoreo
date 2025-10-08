@@ -1,5 +1,27 @@
-// src/views/Dashboard.vue
+<!-- src/views/Dashboard.vue -->
 <template>
+
+      <section class="chart-container">
+        <div class="chart-header">
+          <h3>Evolución de Temperatura (Tiempo Real)</h3>
+        </div>
+        
+        <div class="chart-wrapper">
+          <apexchart
+            v-if="series.length > 0"
+            type="area"
+            height="350"
+            :options="chartOptions"
+            :series="visibleSeries"  
+            @legend-click="handleLegendClick"
+          ></apexchart>
+          
+          <div v-else class="loading-chart">
+            {{ cargandoGrafica ? 'Cargando datos históricos...' : 'No hay datos para mostrar.' }}
+          </div>
+        </div>
+      </section>
+
       <section class="cards">
         <article 
           v-for="r in ultimasPorCuarto" 
@@ -61,13 +83,17 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import mqtt from '../mqtt-shim.js'
+import VueApexCharts from 'vue3-apexcharts';
+import '../assets/dashboard.css'; 
+
+const apexchart = VueApexCharts;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
 const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' // ajusta al tuyo
 const MQTT_USER = import.meta.env.VITE_MQTT_USERNAME || undefined
 const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined
 const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC || 'cuartos_frios/lecturas'
-const DEFAULT_SENSOR_ID = Number(import.meta.env.VITE_DEFAULT_SENSOR_ID || 1)
+// const DEFAULT_SENSOR_ID = Number(import.meta.env.VITE_DEFAULT_SENSOR_ID || 1)
 
 const conectado = ref(false)
 const lecturas = ref([])
@@ -75,38 +101,60 @@ const actual = ref(null)
 const error = ref(null)
 let client = null
 
-const toNumberOrUndef = (v) =>
-  v !== undefined && v !== null && v !== '' && !Number.isNaN(Number(v))
-    ? Number(v)
-    : undefined
+const MAX_DATAPOINTS = 30; 
+const series = ref([]);
+const chartOptions = ref({
+  chart: {
+    type: 'area',
+    height: 350,
+    zoom: { enabled: false },
+    toolbar: { show: true },
+    animations: {
+      enabled: true,
+      easing: 'linear',
+      dynamicAnimation: { speed: 1000 }
+    },
+  },
+  dataLabels: { enabled: false },
+  stroke: { curve: 'smooth' },
+  xaxis: {
+    type: 'datetime',
+    labels: { datetimeUTC: false } 
+  },
+  yaxis: {
+    title: { text: 'Temperatura (°C)' },
+    labels: {
+      formatter: (val) => val.toFixed(1)
+    }
+  },
+  tooltip: {
+    x: { format: 'dd MMM yyyy - HH:mm:ss' },
+  },
+  legend: { 
+    position: 'top',
+    onItemClick: {
+      toggleDataSeries: false
+    },
+    onItemHover: {
+      highlightDataSeries: true
+    },
+  },
+});
+const visibleCuartos = ref(new Set());
 
-const procesarDatos = (data) =>
-  !data
-    ? data
-    : {
-        ...data,
-        temperatura_c: toNumberOrUndef(data.temperatura_c),
-        humedad_pct: toNumberOrUndef(data.humedad_pct),
-      }
+const visibleSeries = computed(() => {
+  return series.value.map(s => {
+    const isVisible = visibleCuartos.value.has(s.cuarto_id);
+    return {
+      ...s,
+      data: isVisible ? s.data : [],
+      // Forzar actualización del estado visual
+      color: isVisible ? s.color : '#CCCCCC' // Gris cuando está oculta
+    };
+  });
+});
 
-const fromNow = (dateStr) => {
-  if (!dateStr) return ''
-  const ms = Date.now() - new Date(dateStr).getTime()
-  if (!Number.isFinite(ms)) return ''
-  const s = Math.floor(ms / 1000)
-  if (s < 60) return 'hace unos segundos'
-  const m = Math.floor(s / 60)
-  if (m < 60) return `hace ${m} min`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `hace ${h} h`
-  const d = Math.floor(h / 24)
-  return `hace ${d} d`
-}
-
-const roomName = (r) => 
-  r?.cuarto_nombre ||
-  (r?.cuarto_id ? `CUARTO ${r.cuarto_id}` : r?.sensor_id ? `SENSOR ${r.sensor_id}` : '—')
-
+const cargandoGrafica = ref(true);
 const ultimasPorCuarto = computed(() => {
   const map = new Map()
   for (const r of lecturas.value) {
@@ -130,45 +178,56 @@ const ultimasPorCuarto = computed(() => {
   return arr
 })
 
-onMounted(() => {
-  // 1) Conectar a MQTT WebSocket
+onMounted(async () => {
+  await cargarDatosGrafica();
+  await cargarDatosCards();
+
   client = mqtt.connect(MQTT_URL, {
     username: MQTT_USER,
     password: MQTT_PASS,
     keepalive: 60,
     reconnectPeriod: 1000, // reconexión auto
-  })
+  });
 
   client.on('connect', () => {
-    conectado.value = true
-    error.value = null
-    // Suscribirse al tópico
+    conectado.value = true;
+    error.value = null;
     client.subscribe(MQTT_TOPIC, { qos: 0 }, (err) => {
-      if (err) error.value = `Error suscribiendo al tópico: ${err.message}`
-    })
-  })
-
+      if (err) error.value = `Error suscribiendo al tópico: ${err.message}`;
+    });
+    console.log('Pidiendo actualización inmediata...');
+    client.publish('cuartos_frios/request_latest', '1', { qos: 0 });
+  });
   client.on('reconnect', () => { /* opcional */ })
   client.on('close', () => { conectado.value = false })
   client.on('error', (err) => { error.value = `MQTT error: ${err.message}` })
 
   client.on('message', (_topic, payload) => {
     try {
-      const data = JSON.parse(payload.toString())
-      const d = procesarDatos(data)
-      // Si tu backend no añade timestamp, usa ahora:
-      if (!d.tomado_en_utc) d.tomado_en_utc = new Date().toISOString()
+      const data = JSON.parse(payload.toString());
+      const d = procesarDatos(data);
+      if (!d.tomado_en_utc) d.tomado_en_utc = new Date().toISOString();
+      
+      actual.value = d;
+      lecturas.value = [d, ...lecturas.value].slice(0, 300);
 
-      actual.value = d
-      lecturas.value = [d, ...lecturas.value].slice(0, 300)
+      const seriesIndex = series.value.findIndex(s => s.cuarto_id === d.cuarto_id);
+      if (seriesIndex !== -1) {
+        const newDataPoint = [
+          new Date().getTime(),
+          d.temperatura_c
+        ];
+
+        series.value[seriesIndex].data.push(newDataPoint);
+        if (series.value[seriesIndex].data.length > MAX_DATAPOINTS) {
+          series.value[seriesIndex].data.shift();
+        }
+      }
     } catch (e) {
-      console.error('Mensaje MQTT inválido', e)
+      console.error('Mensaje MQTT inválido', e);
     }
-  })
-
-  // 2) Cargar historial inicial desde API
-  cargarHistorialInicial()
-})
+  });
+});
 
 onUnmounted(() => {
   if (client) {
@@ -177,20 +236,85 @@ onUnmounted(() => {
   }
 })
 
-const cargarHistorialInicial = async () => {
+const cargarDatosCards = async () => {
   try {
-    const response = await fetch(`${API_BASE}/lecturas?sensor_id=${DEFAULT_SENSOR_ID}&limit=200`)
-    const data = await response.json()
-    const arr = Array.isArray(data) ? data : data?.data
-    if (Array.isArray(arr)) {
-      const procesados = arr.map(procesarDatos)
-      lecturas.value = procesados
-      actual.value = procesados[0] ?? null
+    const response = await fetch(`${API_BASE}/ultimas?by=cuarto`);
+    const result = await response.json();
+    if (result.success && Array.isArray(result.data)) {
+      const procesados = result.data.map(procesarDatos);
+      lecturas.value = procesados;
+      actual.value = procesados[0] ?? null;
     } else {
-      error.value = 'Formato de datos inesperado del servidor'
+      error.value = 'Formato de datos inesperado del servidor';
     }
   } catch (e) {
-    error.value = `Error cargando datos: ${e.message}`
+    error.value = `Error cargando datos para las tarjetas: ${e.message}`;
   }
+};
+
+const cargarDatosGrafica = async () => {
+  cargandoGrafica.value = true;
+  try {
+    const response = await fetch(`${API_BASE}/lecturas/grafica`);
+    const result = await response.json();
+    if (result.success) {
+      const datosAgrupados = result.data;
+      const nuevasSeries = [];
+      for (const cuarto_id in datosAgrupados) {
+        nuevasSeries.push({
+          cuarto_id: parseInt(cuarto_id),
+          name: datosAgrupados[cuarto_id][0]?.cuarto_nombre || `Cuarto ${cuarto_id}`,
+          data: datosAgrupados[cuarto_id].map(lectura => [
+            new Date(lectura.ingresado_en).getTime(),
+            parseFloat(lectura.temperatura_c)
+          ])
+        });
+      }
+      series.value = nuevasSeries;
+      visibleCuartos.value.clear();
+      nuevasSeries.forEach(s => visibleCuartos.value.add(s.cuarto_id));
+    }
+  } catch (e) {
+    console.error("Error cargando datos para la gráfica:", e);
+  } finally {
+    cargandoGrafica.value = false; 
+  }
+};
+
+const procesarDatos = (data) => {
+  if (!data) return data;
+  const toNumberOrUndef = (v) => (v !== null && v !== '' && !isNaN(Number(v))) ? Number(v) : undefined;
+  return { ...data, temperatura_c: toNumberOrUndef(data.temperatura_c), humedad_pct: toNumberOrUndef(data.humedad_pct) };
+};
+      
+const fromNow = (dateStr) => {
+  if (!dateStr) return ''
+  const ms = Date.now() - new Date(dateStr).getTime()
+  if (!Number.isFinite(ms)) return ''
+  const s = Math.floor(ms / 1000)
+  if (s < 60) return 'hace unos segundos'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `hace ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `hace ${h} h`
+  const d = Math.floor(h / 24)
+  return `hace ${d} d`
+};
+
+const roomName = (r) => {
+  return r?.cuarto_nombre || (r?.cuarto_id ? `CUARTO ${r.cuarto_id}` : r?.sensor_id ? `SENSOR ${r.sensor_id}` : '—');
+};
+
+function handleLegendClick(chartContext, seriesIndex, config) {
+  
+  const cuartoId = series.value[seriesIndex].cuarto_id;
+  if (visibleCuartos.value.has(cuartoId)) {
+    visibleCuartos.value.delete(cuartoId); 
+  } else {
+    visibleCuartos.value.add(cuartoId);
+  }
+  const seriesName = config.globals.seriesNames[seriesIndex];
+  
+  chartContext.toggleSeries(seriesName);
 }
 </script>

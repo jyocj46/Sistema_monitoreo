@@ -107,45 +107,48 @@ class Temperature {
     }
     
     public function insertarLectura(
-                int $cuartoId,
-                int $sensorId,
-                ?float $temperatura,
-                ?float $humedad,
-                string $origen = 'MQTT',
-                ?string $tomadoEnUtc = null    // 👈 NUEVO
-            ): bool {
-                
-                $tomadoSql = null;
-                if (!empty($tomadoEnUtc)) {
-                    $ts = strtotime($tomadoEnUtc);        // entiende 'Z' como UTC
-                    if ($ts !== false) {
-                        $tomadoSql = gmdate('Y-m-d H:i:s', $ts);
-                    }
+        int $cuartoId,
+        int $sensorId,
+        ?float $temperatura,
+        ?float $humedad,
+        string $origen = 'HTTP',
+        ?string $tomadoEnUtc = null
+        ): bool {
+            
+            $sql = "INSERT INTO lectura
+                    (cuarto_id, sensor_id, temperatura_c, humedad_pct, origen, tomado_en_utc, ingresado_en, estado)
+                    VALUES
+                    (:cuarto_id, :sensor_id, :temperatura, :humedad, :origen, :tomado_en_utc, :ingresado_en, 'OK')";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':cuarto_id', $cuartoId, \PDO::PARAM_INT);
+            $stmt->bindValue(':sensor_id', $sensorId, \PDO::PARAM_INT);
+            $stmt->bindValue(':temperatura', $temperatura);
+            $stmt->bindValue(':humedad', $humedad);
+            $stmt->bindValue(':origen', $origen);
+            $tomadoSql = null;
+            if (!empty($tomadoEnUtc)) {
+                $ts = strtotime($tomadoEnUtc);
+                if ($ts !== false) {
+                    $tomadoSql = gmdate('Y-m-d H:i:s', $ts);
                 }
-
+            }
+            
+            if ($tomadoSql) {
+                $stmt->bindValue(':tomado_en_utc', $tomadoSql);
+            } else {
                 
-                $sql = "INSERT INTO lectura
-                        (cuarto_id, sensor_id, temperatura_c, humedad_pct, origen, tomado_en_utc, estado)
-                        VALUES
-                        (:cuarto_id, :sensor_id, :temperatura, :humedad, :origen, COALESCE(:tomado_en_utc, UTC_TIMESTAMP()), 'OK')";
+                $utc_now = $this->pdo->query("SELECT UTC_TIMESTAMP()")->fetchColumn();
+                $stmt->bindValue(':tomado_en_utc', $utc_now);
+            }
 
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->bindValue(':cuarto_id', $cuartoId, \PDO::PARAM_INT);
-                $stmt->bindValue(':sensor_id', $sensorId, \PDO::PARAM_INT);
-                $stmt->bindValue(':temperatura', $temperatura);
-                $stmt->bindValue(':humedad', $humedad);
-                $stmt->bindValue(':origen', $origen);
-                if ($tomadoSql) {
-                    $stmt->bindValue(':tomado_en_utc', $tomadoSql);
-                } else {
-                    $stmt->bindValue(':tomado_en_utc', null, \PDO::PARAM_NULL);
-                }
+            $local_now_corrected = $this->pdo->query("SELECT DATE_SUB(NOW(), INTERVAL 1 HOUR)")->fetchColumn();
+            $stmt->bindValue(':ingresado_en', $local_now_corrected);
 
-                return $stmt->execute();
+            return $stmt->execute();
     }
 
-
-  public function getEstadisticasCuarto(int $roomId, string $periodo = 'DAY'): array {
+    public function getEstadisticasCuarto(int $roomId, string $periodo = 'DAY'): array {
         $periodo = strtoupper($periodo);
         $allowed = ['HOUR','DAY','WEEK','MONTH'];
         if (!in_array($periodo, $allowed)) $periodo = 'DAY';
@@ -170,7 +173,6 @@ class Temperature {
         $stmt->execute([':room_id' => $roomId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
 
     public function verificarAlertas(int $roomId, int $sensorId, float $temperature, float $humidity): array {
         $sql = "SELECT temp_min_c, temp_max_c, hum_min_pct, hum_max_pct, hysteresis_c
@@ -201,5 +203,67 @@ class Temperature {
             }
         }
         return $alerts;
+    }
+
+    public function getPromediosDiarios(?string $fechaInicio, ?string $fechaFin, ?int $cuartoId) {
+        
+        $sql = "SELECT
+                    DATE(m.tomado_en_utc) AS fecha,
+                    m.cuarto_id,
+                    r.nombre AS cuarto_nombre,
+                    AVG(m.temperatura_c) AS temp_promedio
+                FROM lectura m
+                INNER JOIN cuarto r ON m.cuarto_id = r.id
+                WHERE 1=1";
+        
+        $params = [];
+
+        if ($fechaInicio !== null) {
+            $sql .= " AND DATE(m.tomado_en_utc) >= :fecha_inicio";
+            $params[':fecha_inicio'] = $fechaInicio;
+        }
+        if ($fechaFin !== null) {
+            $sql .= " AND DATE(m.tomado_en_utc) <= :fecha_fin";
+            $params[':fecha_fin'] = $fechaFin;
+        }
+        if ($cuartoId !== null) {
+            $sql .= " AND m.cuarto_id = :cuarto_id";
+            $params[':cuarto_id'] = $cuartoId;
+        }
+
+        $sql .= " GROUP BY fecha, m.cuarto_id, r.nombre ORDER BY fecha ASC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getLecturasParaGrafica(int $limitPorCuarto = 30): array {
+        
+            $sql = "
+                SELECT id, cuarto_id, cuarto_nombre, temperatura_c, ingresado_en
+                FROM (
+                    SELECT
+                        l.id,
+                        l.cuarto_id,
+                        c.nombre AS cuarto_nombre,
+                        l.temperatura_c,
+                        l.ingresado_en,
+                        @rn := IF(@prev_cuarto_id = l.cuarto_id, @rn + 1, 1) AS rn,
+                        @prev_cuarto_id := l.cuarto_id
+                    FROM lectura l
+                    INNER JOIN cuarto c ON l.cuarto_id = c.id
+                    CROSS JOIN (SELECT @rn := 0, @prev_cuarto_id := NULL) AS vars
+                    WHERE l.ingresado_en >= DATE_SUB(NOW(), INTERVAL 1 DAY) -- Filtra el último día según la hora local
+                    ORDER BY l.cuarto_id, l.ingresado_en DESC
+                ) AS sub
+                WHERE rn <= :limit_por_cuarto
+                ORDER BY cuarto_id, ingresado_en ASC;
+            ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':limit_por_cuarto', $limitPorCuarto, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

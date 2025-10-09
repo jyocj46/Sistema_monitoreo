@@ -1,11 +1,6 @@
 <!-- src/views/Dashboard.vue -->
 <template>
 
-        <div class="unit-toggle">
-          <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
-          <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
-        </div>
-
       <section class="chart-container">
         <div class="chart-header">
           <h3>Evolución de Temperatura (Tiempo Real)</h3>
@@ -68,8 +63,7 @@
         <article v-if="ultimasPorCuarto.length === 0" class="card" style="grid-column: 1 / -1">
           <div class="card-body" style="grid-template-columns: 1fr">
             <div class="temp">
-              <div class="value">{{ displayTemp(r.temperatura_c) }}</div>
-              <div class="unit">°{{ displayUnit }}</div>
+              <div class="value">—</div>
             </div>
           </div>
           <div class="card-foot">
@@ -80,7 +74,7 @@
         </article>
       </section>
 
-      <Modal v-if="selectedCuarto" @close="selectedCuarto = null">
+    <Modal v-if="selectedCuarto" @close="selectedCuarto = null">
       <div v-if="selectedCuarto">
         <h3>Historial de Temperatura - {{ roomName(selectedCuarto) }}</h3>
         <apexchart
@@ -104,12 +98,11 @@ import Modal from '../components/Modal.vue';
 const apexchart = VueApexCharts;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
-const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' 
+const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' // ajusta al tuyo
 const MQTT_USER = import.meta.env.VITE_MQTT_USERNAME || undefined
 const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined
 const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC || 'cuartos_frios/lecturas'
-
-
+// const DEFAULT_SENSOR_ID = Number(import.meta.env.VITE_DEFAULT_SENSOR_ID || 1)
 
 const conectado = ref(false)
 const lecturas = ref([])

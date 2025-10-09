@@ -1,6 +1,13 @@
 <!-- src/views/Dashboard.vue -->
 <template>
 
+    <div class="global-controls">
+      <div class="unit-toggle">
+        <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
+        <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
+      </div>
+    </div>
+
       <section class="chart-container">
         <div class="chart-header">
           <h3>Evolución de Temperatura (Tiempo Real)</h3>
@@ -12,7 +19,7 @@
             type="area"
             height="350"
             :options="chartOptions"
-            :series="visibleSeries"  
+            :series="chartSeries"  
             @legend-click="handleLegendClick"
           ></apexchart>
           
@@ -41,9 +48,9 @@
             <svg viewBox="0 0 24 24" class="icon"><path d="M14 14.76V5a2 2 0 10-4 0v9.76a4 4 0 106.66 3.08A4 4 0 0014 14.76zM12 2a3 3 0 013 3v9.1a5.5 5.5 0 11-6 0V5a3 3 0 013-3z"/></svg>
             <div class="temp">
               <div class="value">
-                {{ r?.temperatura_c !== undefined && r?.temperatura_c !== null ? r.temperatura_c.toFixed(2) : '--' }}
+                {{ displayTemp(r?.temperatura_c) }}
               </div>
-              <div class="unit">°C</div>
+              <div class="unit">°{{ displayUnit }}</div>
             </div>
             <svg viewBox="0 0 24 24" class="icon check"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
@@ -81,7 +88,7 @@
           type="area"
           height="400"
           :options="individualChartOptions"
-          :series="individualSeries"
+          :series="individualChartSeries"
         ></apexchart>
       </div>
     </Modal>
@@ -98,84 +105,57 @@ import Modal from '../components/Modal.vue';
 const apexchart = VueApexCharts;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
-const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' // ajusta al tuyo
+const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001'
 const MQTT_USER = import.meta.env.VITE_MQTT_USERNAME || undefined
-const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined
+const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined 
 const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC || 'cuartos_frios/lecturas'
-// const DEFAULT_SENSOR_ID = Number(import.meta.env.VITE_DEFAULT_SENSOR_ID || 1)
 
-const conectado = ref(false)
-const lecturas = ref([])
-const actual = ref(null)
-const error = ref(null)
+
+const conectado = ref(false);
+const lecturas = ref([]);
+const actual = ref(null);
+const error = ref(null);
 const cuartoNames = ref({});
-let client = null
+let client = null;
 const selectedCuarto = ref(null);
 const individualSeries = ref([]);
-const individualChartOptions = ref({
-    chart: { 
-    type: 'area', 
-    height: 400,
-    toolbar: {
-      tools: {
-        download: true, 
-        selection: false,
-        zoom: false,          
-        zoomin: true,        
-        zoomout: true,       
-        pan: false,          
-        reset: false          
-      }
-    }
-  },
+const MAX_DATAPOINTS = 30;
+const series = ref([]);
+const visibleCuartos = ref(new Set());
+const cargandoGrafica = ref(true);
+
+const displayUnit = ref('F'); 
+const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
+
+const individualChartOptions = computed(() => ({
+  chart: { type: 'area', height: 400, toolbar: { tools: { download: true, selection: false, zoom: false, zoomin: true, zoomout: true, pan: false, reset: false } } },
   xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
-  yaxis: { title: { text: 'Temperatura (°C)' } },
+  yaxis: { title: { text: `Temperatura (°${displayUnit.value})` }, labels: { formatter: (val) => { return val.toFixed(1);}}},
   stroke: { curve: 'smooth' },
   dataLabels: { enabled: false }
-});
+}));
 
-
-
-const MAX_DATAPOINTS = 30; 
-const series = ref([]);
-const chartOptions = ref({
-  chart: {
-    type: 'area',
-    height: 350,
-    zoom: { enabled: false },
-    toolbar: { show: true },
-    animations: {
-      enabled: true,
-      easing: 'linear',
-      dynamicAnimation: { speed: 1000 }
-    },
-  },
+const chartOptions = computed(() => ({
+  chart: { type: 'area', height: 350, zoom: { enabled: false }, toolbar: { show: true }, animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } } },
   dataLabels: { enabled: false },
   stroke: { curve: 'smooth' },
-  xaxis: {
-    type: 'datetime',
-    labels: { datetimeUTC: false } 
-  },
+  xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
   yaxis: {
-    title: { text: 'Temperatura (°C)' },
-    labels: {
-      formatter: (val) => val.toFixed(1)
-    }
+    title: { text: `Temperatura (°${displayUnit.value})` }, 
+    labels: { formatter: (val) => val.toFixed(1) }
   },
-  tooltip: {
-    x: { format: 'dd MMM yyyy - HH:mm:ss' },
-  },
-  legend: { 
-    position: 'top',
-    onItemClick: {
-      toggleDataSeries: false
-    },
-    onItemHover: {
-      highlightDataSeries: true
-    },
-  },
+  tooltip: { x: { format: 'dd MMM yyyy - HH:mm:ss' } },
+  legend: { position: 'top', onItemClick: { toggleDataSeries: false }, onItemHover: { highlightDataSeries: true } },
+  colors: ['#008FFB', '#00E396', '#FEB019', '#FF4560', '#775DD0', '#546E7A', '#26a69a'], 
+}));
+
+const individualChartSeries = computed(() => {
+  if (displayUnit.value === 'C' || !individualSeries.value.length) return individualSeries.value;
+  return [{
+    ...individualSeries.value[0],
+    data: individualSeries.value[0].data.map(([ts, tempC]) => [ts, toFahrenheit(tempC)])
+  }];
 });
-const visibleCuartos = ref(new Set());
 
 const visibleSeries = computed(() => {
   return series.value.map(s => {
@@ -183,13 +163,20 @@ const visibleSeries = computed(() => {
     return {
       ...s,
       data: isVisible ? s.data : [],
-      // Forzar actualización del estado visual
-      color: isVisible ? s.color : '#CCCCCC' // Gris cuando está oculta
+      color: isVisible ? s.color : '#CCCCCC' 
     };
   });
 });
 
-const cargandoGrafica = ref(true);
+const chartSeries = computed(() => {
+  const source = visibleSeries.value;
+  if (displayUnit.value === 'C') return source;
+  return source.map(serie => ({
+    ...serie,
+    data: serie.data.map(([ts, tempC]) => [ts, toFahrenheit(tempC)])
+  }));
+});
+
 const ultimasPorCuarto = computed(() => {
   const map = new Map()
   for (const r of lecturas.value) {
@@ -426,4 +413,8 @@ const cargarNombresDeCuartos = async () => {
   }
 };
 
+const displayTemp = (celsius) => {
+  if (celsius === undefined || celsius === null) return '--';
+  return (displayUnit.value === 'F' ? toFahrenheit(celsius) : celsius).toFixed(2);
+};
 </script>

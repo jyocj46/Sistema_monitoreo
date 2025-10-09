@@ -1,6 +1,11 @@
 <!-- src/views/Dashboard.vue -->
 <template>
 
+        <div class="unit-toggle">
+          <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
+          <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
+        </div>
+
       <section class="chart-container">
         <div class="chart-header">
           <h3>Evolución de Temperatura (Tiempo Real)</h3>
@@ -23,11 +28,7 @@
       </section>
 
       <section class="cards">
-        <article 
-          v-for="r in ultimasPorCuarto" 
-          :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" 
-          class="card"
-        >
+        <article v-for="r in ultimasPorCuarto" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
           <div class="card-head">
             <div class="head-left">
               <span class="badge">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
@@ -36,8 +37,8 @@
             <div class="head-right">
               <!-- Iconos SVG -->
               <svg viewBox="0 0 24 24" class="icon"><path d="M3 17h2v4H3zM7 13h2v8H7zM11 9h2v12h-2zM15 5h2v16h-2zM19 1h2v20h-2z"/></svg>
-              <svg viewBox="0 0 24 24" class="icon"><path d="M16 7H3a2 2 0 00-2 2v6a2 2 0 002 2h13a2 2 0 002-2V9a2 2 0 00-2-2zm5 3v4"/></svg>
-              <svg viewBox="0 0 24 24" class="icon"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+             <!--  <svg viewBox="0 0 24 24" class="icon"><path d="M16 7H3a2 2 0 00-2 2v6a2 2 0 002 2h13a2 2 0 002-2V9a2 2 0 00-2-2zm5 3v4"/></svg>
+              <svg viewBox="0 0 24 24" class="icon"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>-->
             </div>
           </div>
 
@@ -59,7 +60,7 @@
                 Humedad: {{ r?.humedad_pct !== undefined && r?.humedad_pct !== null ? `${r.humedad_pct.toFixed(2)} %` : '--' }}
               </span>
             </div>
-            <button class="link" :title="r?.tomado_en_utc || ''">Ver más</button>
+             <button class="link" @click="openModalChart(r)">Ver más</button>
           </div>
         </article>
 
@@ -67,7 +68,8 @@
         <article v-if="ultimasPorCuarto.length === 0" class="card" style="grid-column: 1 / -1">
           <div class="card-body" style="grid-template-columns: 1fr">
             <div class="temp">
-              <div class="value">—</div>
+              <div class="value">{{ displayTemp(r.temperatura_c) }}</div>
+              <div class="unit">°{{ displayUnit }}</div>
             </div>
           </div>
           <div class="card-foot">
@@ -77,6 +79,19 @@
           </div>
         </article>
       </section>
+
+      <Modal v-if="selectedCuarto" @close="selectedCuarto = null">
+      <div v-if="selectedCuarto">
+        <h3>Historial de Temperatura - {{ roomName(selectedCuarto) }}</h3>
+        <apexchart
+          type="area"
+          height="400"
+          :options="individualChartOptions"
+          :series="individualSeries"
+        ></apexchart>
+      </div>
+    </Modal>
+
 </template>
 
 
@@ -85,21 +100,48 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import mqtt from '../mqtt-shim.js'
 import VueApexCharts from 'vue3-apexcharts';
 import '../assets/dashboard.css'; 
-
+import Modal from '../components/Modal.vue'; 
 const apexchart = VueApexCharts;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api'
-const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' // ajusta al tuyo
+const MQTT_URL = import.meta.env.VITE_MQTT_URL || 'ws://localhost:9001' 
 const MQTT_USER = import.meta.env.VITE_MQTT_USERNAME || undefined
 const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined
 const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC || 'cuartos_frios/lecturas'
-// const DEFAULT_SENSOR_ID = Number(import.meta.env.VITE_DEFAULT_SENSOR_ID || 1)
+
+
 
 const conectado = ref(false)
 const lecturas = ref([])
 const actual = ref(null)
 const error = ref(null)
+const cuartoNames = ref({});
 let client = null
+const selectedCuarto = ref(null);
+const individualSeries = ref([]);
+const individualChartOptions = ref({
+    chart: { 
+    type: 'area', 
+    height: 400,
+    toolbar: {
+      tools: {
+        download: true, 
+        selection: false,
+        zoom: false,          
+        zoomin: true,        
+        zoomout: true,       
+        pan: false,          
+        reset: false          
+      }
+    }
+  },
+  xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
+  yaxis: { title: { text: 'Temperatura (°C)' } },
+  stroke: { curve: 'smooth' },
+  dataLabels: { enabled: false }
+});
+
+
 
 const MAX_DATAPOINTS = 30; 
 const series = ref([]);
@@ -178,7 +220,8 @@ const ultimasPorCuarto = computed(() => {
   return arr
 })
 
-onMounted(async () => {
+onMounted(async () => { 
+  await cargarNombresDeCuartos(); 
   await cargarDatosGrafica();
   await cargarDatosCards();
 
@@ -223,6 +266,15 @@ onMounted(async () => {
           series.value[seriesIndex].data.shift();
         }
       }
+
+     if (selectedCuarto.value && d.cuarto_id === selectedCuarto.value.cuarto_id && individualSeries.value.length > 0) {
+      const newDataPoint = [new Date().getTime(), d.temperatura_c];
+      individualSeries.value[0].data.push(newDataPoint);
+      if (individualSeries.value[0].data.length > 200) {
+        individualSeries.value[0].data.shift();
+      }
+    }
+
     } catch (e) {
       console.error('Mensaje MQTT inválido', e);
     }
@@ -244,6 +296,13 @@ const cargarDatosCards = async () => {
       const procesados = result.data.map(procesarDatos);
       lecturas.value = procesados;
       actual.value = procesados[0] ?? null;
+
+      for (const cuarto of procesados) {
+        if (cuarto.cuarto_id && cuarto.room_name) {
+          cuartoNames.value[cuarto.cuarto_id] = cuarto.room_name;
+        }
+      }  
+
     } else {
       error.value = 'Formato de datos inesperado del servidor';
     }
@@ -302,7 +361,14 @@ const fromNow = (dateStr) => {
 };
 
 const roomName = (r) => {
-  return r?.cuarto_nombre || (r?.cuarto_id ? `CUARTO ${r.cuarto_id}` : r?.sensor_id ? `SENSOR ${r.sensor_id}` : '—');
+  if (!r) return '—';
+  if (r.cuarto_id && cuartoNames.value[r.cuarto_id]) {
+    return cuartoNames.value[r.cuarto_id];
+  }
+  if (r.room_name) {
+    return r.room_name;
+  }
+  return r.cuarto_id ? `CUARTO ${r.cuarto_id}` : `SENSOR ${r.sensor_id}`;
 };
 
 function handleLegendClick(chartContext, seriesIndex, config) {
@@ -317,4 +383,54 @@ function handleLegendClick(chartContext, seriesIndex, config) {
   
   chartContext.toggleSeries(seriesName);
 }
+
+async function openModalChart(cuarto) {
+  selectedCuarto.value = cuarto;
+  individualSeries.value = []; 
+
+ try {
+    const hoy = new Date();
+    const ayer = new Date();
+    ayer.setDate(hoy.getDate() - 1); 
+
+    const formatoFecha = (fecha) => fecha.toISOString().split('T')[0];
+    const fechaInicio = formatoFecha(ayer);
+    const fechaFin = formatoFecha(hoy);
+    
+    const url = `${API_BASE}/lecturas?cuarto_id=${cuarto.cuarto_id}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&sort=ASC`;
+    
+
+    const response = await fetch(url);
+    const result = await response.json();
+    if (result.success && Array.isArray(result.data)) {
+      individualSeries.value = [{
+        name: roomName(cuarto),
+        data: result.data.map(lectura => [
+          new Date(lectura.ingresado_en).getTime(),
+          parseFloat(lectura.temperatura_c)
+        ])
+      }];
+    }
+  } catch(e) {
+    console.error("Error cargando datos para la gráfica individual:", e);
+  }
+}
+
+const cargarNombresDeCuartos = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/cuartos`);
+    const result = await response.json();
+    
+    if (result.success && Array.isArray(result.data)) {   
+      const namesMap = {};         
+      for (const cuarto of result.data) {   
+        namesMap[cuarto.id] = cuarto.nombre;
+      }        
+      cuartoNames.value = namesMap;
+    }
+  } catch (e) {
+    console.error("Error crítico al cargar los nombres de los cuartos:", e);
+  }
+};
+
 </script>

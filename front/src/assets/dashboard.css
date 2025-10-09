@@ -22,3 +22,24 @@
   color: #6b7280;
   font-style: italic;
 }
+.unit-toggle {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.unit-toggle button {
+  border: 1px solid #d1d5db;
+  background-color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.unit-toggle button.active {
+  background-color: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}

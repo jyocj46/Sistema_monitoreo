@@ -1,7 +1,7 @@
 <!-- src/views/Reports.vue -->
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import TemperatureChart from '../components/TemperatureChart.vue';
 import ExportButtons from '../components/ExportButtons.vue';
 import '../assets/reports.css'; 
@@ -20,6 +20,9 @@ const cargando = ref(false);
 const error = ref(null);
 const reporteGenerado = ref(false);
 const displayUnit = ref('F'); 
+const currentPage = ref(1);
+const itemsPerPage = 20;
+const pageInput = ref(1);
 const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
 
 const chartDataConverted = computed(() => {
@@ -40,6 +43,29 @@ const chartDataConverted = computed(() => {
   return convertedData;
 });
 
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const totalPages = computed(() => {
+  return Math.ceil(resultados.value.length / itemsPerPage);
+});
+
+const goToPageFromInput = () => {
+  goToPage(pageInput.value);
+};
+
+const paginatedResultados = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return resultados.value.slice(start, end);
+});
+
+watch(currentPage, (newPage) => {
+  pageInput.value = newPage;
+});
 
 const exportData = computed(() => {
   if (!resultados.value.length) return [];
@@ -83,6 +109,7 @@ const toggleSortOrder = () => {
 };
 
 const formatChartData = (promedios) => {
+  
   if (!promedios || promedios.length === 0) return null;
 
   const labels = [...new Set(promedios.map(p => p.fecha))].sort();
@@ -109,7 +136,8 @@ const formatChartData = (promedios) => {
   return { labels, datasets };
 };
 
-  const generarReporte = async () => {
+const generarReporte = async () => {
+
     if (!fechaInicio.value || !fechaFin.value) {
       error.value = 'Por favor, selecciona ambas fechas.';
       return;
@@ -120,6 +148,8 @@ const formatChartData = (promedios) => {
     resultados.value = [];
     promediosData.value = null;
     reporteGenerado.value = true;
+    currentPage.value = 1; 
+    pageInput.value = 1;
 
     try {
 
@@ -157,9 +187,22 @@ const formatChartData = (promedios) => {
       } catch (e) {
         error.value = `No se pudo generar el reporte: ${e.message}`;
       } finally {
-      cargando.value = false;
-      }
+        cargando.value = false;
+    }
   };
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
 </script>
 
 
@@ -214,7 +257,8 @@ const formatChartData = (promedios) => {
           <ExportButtons :data="exportData" filename="reporte_monitoreo" />
         </div>
       </div>
-      
+
+     <div v-if="resultados.length > 0" class="results-section">
       <div class="table-container">
         <table>
           <thead>
@@ -230,7 +274,7 @@ const formatChartData = (promedios) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="lectura in resultados" :key="lectura.id">
+            <tr v-for="lectura in paginatedResultados" :key="lectura.id">
               <td>{{ new Date(lectura.tomado_en_utc).toLocaleString() }}</td>
               <td>{{ lectura.cuarto_nombre || `Sensor ${lectura.sensor_id}` }}</td>
               <td>{{ displayTemp(lectura.temperatura_c) }}</td>
@@ -238,6 +282,33 @@ const formatChartData = (promedios) => {
             </tr>
           </tbody>
         </table>
+              <div v-if="totalPages > 1" class="pagination-controls">
+                <button @click="goToPage(1)" :disabled="currentPage === 1">
+                  &laquo;&laquo;
+                </button>
+                <button @click="prevPage" :disabled="currentPage === 1">
+                  &laquo; Anterior
+                </button>
+
+                <span class="page-indicator">
+                  Página 
+                  <input 
+                    type="number" 
+                    v-model.number="pageInput" 
+                    @keyup.enter="goToPageFromInput"
+                    class="page-input"
+                  /> 
+                  de {{ totalPages }}
+                </span>
+
+                <button @click="nextPage" :disabled="currentPage === totalPages">
+                  Siguiente &raquo;
+                </button>
+                <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages">
+                  &raquo;&raquo;
+                </button>
+              </div>
+        </div>  
       </div>
     </div>
 

@@ -1,57 +1,34 @@
-// src/components/TemperatureChart.vue
+<!-- // src/components/TemperatureChart.vue -->
 <template>
   <div class="chart-container">
-    <Line v-if="chartData" :data="chartData" :options="chartOptions" />
+     <Line :data="chartData" :options="chartOptions" />
   </div>
 </template>
 
 <script setup>
 import { Line } from 'vue-chartjs';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import { computed } from 'vue';
+import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement } from 'chart.js';
 
-// Registramos los componentes necesarios de Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement);
 
-// El componente recibe los datos de la gráfica como una propiedad (prop)
-defineProps({
-  chartData: {
-    type: Object,
-    required: true,
-  },
+
+const props = defineProps({
+  chartData: { type: Object, required: true },
+  displayUnit: { type: String, default: 'C' }
 });
 
-// Opciones de configuración para el estilo de la gráfica
-const chartOptions = {
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: {
-      labels: {
-        color: 'white', // Color del texto de la leyenda
-      },
-    },
+    legend: { position: 'top', labels: { color: 'white' } },
     title: {
       display: true,
-      text: 'Promedio de Temperaturas Diarias (°C)',
-      color: 'white', // Color del título
-    },
+      text: `Promedio de Temperaturas Diarias (°${props.displayUnit})`,
+      color: 'white',
+      font: { size: 16 }
+    }
   },
   scales: {
     x: {
@@ -71,7 +48,7 @@ const chartOptions = {
       },
     },
   },
-};
+}));
 </script>
 
 <style scoped>

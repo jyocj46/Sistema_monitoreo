@@ -1,7 +1,7 @@
-// src/views/Reports.vue
+<!-- src/views/Reports.vue -->
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import TemperatureChart from '../components/TemperatureChart.vue';
 import ExportButtons from '../components/ExportButtons.vue';
 import '../assets/reports.css'; 
@@ -11,19 +11,53 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
 
 const fechaInicio = ref('');
 const fechaFin = ref('');
-const filtroCuartoId = ref(''); // ID del cuarto seleccionado. Vacío para "Todos".
-const sortOrder = ref('DESC'); // 'DESC' (recientes) o 'ASC' (antiguos).
-
+const filtroCuartoId = ref(''); 
+const sortOrder = ref('DESC'); 
 const cuartos = ref([]); 
 const resultados = ref([]);
-const promediosData = ref(null);
+const promediosData = ref(null); // Datos originales de la gráfica en Celsius
 const cargando = ref(false);
 const error = ref(null);
 const reporteGenerado = ref(false);
+const displayUnit = ref('F'); 
+const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
 
-// --- Lógica Nueva ---
+const chartDataConverted = computed(() => {
+  // Si no hay datos o la unidad es Celsius, devuelve los datos originales
+  if (!promediosData.value || displayUnit.value === 'C') {
+    return promediosData.value;
+  }
+  
+  // Si la unidad es Fahrenheit, crea una copia profunda y convierte los datos
+  const convertedData = JSON.parse(JSON.stringify(promediosData.value));
+  convertedData.datasets.forEach(dataset => {
+    dataset.data = dataset.data.map(tempC => {
+      if (tempC === null) return null;
+      return toFahrenheit(tempC);
+    });
+  });
+  
+  return convertedData;
+});
 
-// Función para cargar los cuartos cuando el componente se monta
+
+const exportData = computed(() => {
+  if (!resultados.value.length) return [];
+
+  return resultados.value.map(l => ({
+    'Fecha y Hora': new Date(l.tomado_en_utc).toLocaleString(),
+    'Cuarto/Sensor': l.cuarto_nombre || `Sensor ${l.sensor_id}`,
+
+    [`Temperatura (°${displayUnit.value})`]: displayTemp(l.temperatura_c),
+    'Humedad (%)': l.humedad_pct.toFixed(2)
+  }));
+});
+
+const displayTemp = (celsius) => {
+  if (celsius === undefined || celsius === null) return '--';
+  return (displayUnit.value === 'F' ? toFahrenheit(celsius) : celsius).toFixed(2);
+};
+
 const cargarCuartos = async () => {
   try {
     const response = await fetch(`${API_BASE}/cuartos`);
@@ -40,7 +74,7 @@ onMounted(() => {
   cargarCuartos();
 });
 
-// Función para cambiar el orden y volver a generar el reporte si ya hay resultados
+
 const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'DESC' ? 'ASC' : 'DESC';
   if (resultados.value.length > 0) {
@@ -75,57 +109,57 @@ const formatChartData = (promedios) => {
   return { labels, datasets };
 };
 
-const generarReporte = async () => {
-  if (!fechaInicio.value || !fechaFin.value) {
-    error.value = 'Por favor, selecciona ambas fechas.';
-    return;
-  }
-
-  cargando.value = true;
-  error.value = null;
-  resultados.value = [];
-  promediosData.value = null;
-  reporteGenerado.value = true;
-
-  try {
-    // --- Construimos las URLs para ambas peticiones ---
-    let baseUrl = `?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`;
-    if (filtroCuartoId.value) {
-      baseUrl += `&cuarto_id=${filtroCuartoId.value}`;
+  const generarReporte = async () => {
+    if (!fechaInicio.value || !fechaFin.value) {
+      error.value = 'Por favor, selecciona ambas fechas.';
+      return;
     }
 
-    const urlTabla = `${API_BASE}/lecturas${baseUrl}&sort=${sortOrder.value}`;
-    const urlGrafica = `${API_BASE}/lecturas/promedios${baseUrl}`;
+    cargando.value = true;
+    error.value = null;
+    resultados.value = [];
+    promediosData.value = null;
+    reporteGenerado.value = true;
 
-    // --- Hacemos las dos peticiones en paralelo para mayor eficiencia ---
-    const [responseTabla, responseGrafica] = await Promise.all([
-      fetch(urlTabla),
-      fetch(urlGrafica)
-    ]);
+    try {
 
-    if (!responseTabla.ok) throw new Error(`Error al cargar tabla: ${responseTabla.statusText}`);
-    if (!responseGrafica.ok) throw new Error(`Error al cargar gráfica: ${responseGrafica.statusText}`);
-    
-    // --- Procesamos los resultados de la tabla ---
-    const apiResponseTabla = await responseTabla.json();
-    resultados.value = (apiResponseTabla.data || []).map(lectura => ({
-      ...lectura,
-      temperatura_c: parseFloat(lectura.temperatura_c),
-      humedad_pct: parseFloat(lectura.humedad_pct),
-    }));
+      let baseUrl = `?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`;
+      if (filtroCuartoId.value) {
+        baseUrl += `&cuarto_id=${filtroCuartoId.value}`;
+      }
 
-    // --- Procesamos los resultados de la gráfica ---
-    const apiResponseGrafica = await responseGrafica.json();
-    if (apiResponseGrafica.success) {
-      promediosData.value = formatChartData(apiResponseGrafica.data);
-    }
+      const urlTabla = `${API_BASE}/lecturas${baseUrl}&sort=${sortOrder.value}`;
+      const urlGrafica = `${API_BASE}/lecturas/promedios${baseUrl}`;
 
-  } catch (e) {
-    error.value = `No se pudo generar el reporte: ${e.message}`;
-  } finally {
-    cargando.value = false;
-  }
-};
+
+      const [responseTabla, responseGrafica] = await Promise.all([
+        fetch(urlTabla),
+        fetch(urlGrafica)
+      ]);
+
+      if (!responseTabla.ok) throw new Error(`Error al cargar tabla: ${responseTabla.statusText}`);
+      if (!responseGrafica.ok) throw new Error(`Error al cargar gráfica: ${responseGrafica.statusText}`);
+      
+
+      const apiResponseTabla = await responseTabla.json();
+      resultados.value = (apiResponseTabla.data || []).map(lectura => ({
+        ...lectura,
+        temperatura_c: parseFloat(lectura.temperatura_c),
+        humedad_pct: parseFloat(lectura.humedad_pct),
+      }));
+
+
+      const apiResponseGrafica = await responseGrafica.json();
+      if (apiResponseGrafica.success) {
+        promediosData.value = formatChartData(apiResponseGrafica.data);
+      }
+
+      } catch (e) {
+        error.value = `No se pudo generar el reporte: ${e.message}`;
+      } finally {
+      cargando.value = false;
+      }
+  };
 </script>
 
 
@@ -166,17 +200,19 @@ const generarReporte = async () => {
     <div v-if="error" class="error-message">{{ error }}</div>
 
     <div v-if="reporteGenerado && !cargando">
-    <TemperatureChart v-if="promediosData" :chart-data="promediosData" />
-      <div v-if="resultados.length > 0">
-        <div class="results-table">
-          </div>
+      <div class="unit-toggle">
+        <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
+        <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
       </div>
+      <TemperatureChart v-if="chartDataConverted" :chart-data="chartDataConverted" :display-unit="displayUnit" />
     </div>
 
     <div v-if="resultados.length > 0" class="results-section">
       <div class="results-header">
         <h3>Resultados del Reporte</h3>
-        <ExportButtons :data="resultados" filename="reporte_monitoreo" />
+        <div class="results-actions">
+          <ExportButtons :data="exportData" filename="reporte_monitoreo" />
+        </div>
       </div>
       
       <div class="table-container">
@@ -188,8 +224,8 @@ const generarReporte = async () => {
                 <span v-if="sortOrder === 'DESC'">↓</span>
                 <span v-else>↑</span>
               </th>
-              <th>Sensor/Cuarto</th>
-              <th>Temperatura (°C)</th>
+              <th>Cuarto</th>
+              <th>Temperatura (°{{ displayUnit }})</th>
               <th>Humedad (%)</th>
             </tr>
           </thead>
@@ -197,7 +233,7 @@ const generarReporte = async () => {
             <tr v-for="lectura in resultados" :key="lectura.id">
               <td>{{ new Date(lectura.tomado_en_utc).toLocaleString() }}</td>
               <td>{{ lectura.cuarto_nombre || `Sensor ${lectura.sensor_id}` }}</td>
-              <td>{{ lectura.temperatura_c.toFixed(2) }}</td>
+              <td>{{ displayTemp(lectura.temperatura_c) }}</td>
               <td>{{ lectura.humedad_pct.toFixed(2) }}</td>
             </tr>
           </tbody>

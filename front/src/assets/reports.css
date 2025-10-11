@@ -38,6 +38,7 @@
   margin-bottom: 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #eef1f5;
+  flex-wrap: wrap; 
 }
 
 .form-group {
@@ -122,6 +123,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap;  
 }
 
 .results-header h3 {
@@ -129,21 +131,44 @@
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
+  text-align: center;
 }
 
+.results-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-wrap {
+  height: clamp(260px, 42vh, 440px);
+  margin: 8px auto 24px; 
+  width: 100%;
+}
 .table-container {
   background: white;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid #eef1f5;
+  overflow: auto;  
+  scrollbar-gutter: stable both-edges; 
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   background: white;
 }
+
+ th, td {
+   white-space: nowrap;     
+   overflow: hidden;
+   text-overflow: ellipsis; 
+ }
+
 
 th {
   background: rgb( 85, 155, 38);
@@ -208,31 +233,70 @@ tbody tr:last-child td {
   line-height: 1.5;
 }
 
+.unit-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 8px;
+}
 
 @media (max-width: 768px) {
   .reports-container {
     padding: 20px 16px;
+    max-width: 1200px;
+    margin: 0 auto;
   }
   
   .filters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 16px;
-    align-items: end;          /* alinea labels/inputs parejos */
+    align-items: end;          
   }
   
   .results-header {
-    flex-direction: column;
-    gap: 16px;
-    align-items: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;       
+    justify-content: center;
   }
   
+  .results-actions {
+    margin-left: 0;
+    justify-content: center;
+    width: 100%;
+  }
+
   .table-container {
     overflow-x: auto;
   }
   
   th, td {
     padding: 12px 16px;
+  }
+  .generate-btn {
+    justify-self: end;
+    height: 40px;
+  }
+
+  .form-group input,
+  .form-group select {
+  width: 100%;
+}
+}
+
+@media (max-width: 600px) {
+  .generate-btn {
+    grid-column: 1 / -1;   /* botón a lo ancho bajo los inputs */
+    justify-self: stretch;
+  }
+}
+
+/* En móviles: encabezado de resultados en columna limpia */
+@media (max-width: 768px) {
+  .results-header {
+    align-items: flex-start;
   }
 }
 

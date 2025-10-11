@@ -208,16 +208,17 @@ tbody tr:last-child td {
   line-height: 1.5;
 }
 
-/* Responsive */
+
 @media (max-width: 768px) {
   .reports-container {
     padding: 20px 16px;
   }
   
   .filters {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 16px;
+    align-items: end;          /* alinea labels/inputs parejos */
   }
   
   .results-header {

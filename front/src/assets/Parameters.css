@@ -1,0 +1,147 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.section {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: #f8fafc;       /* leve contraste; ajusta si no te gusta */
+}
+
+.parameters-container {
+  padding: 1rem;
+}
+.header-section {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+.header-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+.parameters-grid {
+  display: grid;
+  gap: 1.5rem;
+  /* La magia del responsive: se ajusta automáticamente */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.param-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+}
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-code {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.card-body {
+  padding: 1.5rem;
+  flex-grow: 1;
+}
+.form-row {
+  display: flex; 
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+.card-footer {
+  padding: 1rem 1.5rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 12px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.card-footer button {
+  padding: 0.6rem 1.2rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.card-footer button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+.save-status {
+  font-weight: 600;
+  text-align: right;
+}
+.save-status.success {
+  color: #16a34a;
+}
+.save-status.error {
+  color: #dc2626;
+}
+
+@media (max-width: 768px) {
+  .parameters-grid {
+   display: grid;
+   gap: 1.5rem;
+   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  
+  .param-card { min-width: 0; }
+  
+  .form-row {
+    gap: 1rem; 
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .form-row {
+    grid-template-columns: 1fr;   /* ⬅️ de 2 columnas a 1 */
+  }
+}
+@media (max-width: 420px) {
+  .form-row {
+    flex-direction: column; /* Apila los campos en pantallas muy pequeñas */
+  }
+}

@@ -7,8 +7,8 @@
       <nav class="menu">
         <router-link to="/">Dashboard</router-link>
         <router-link to="/reports">Reportes</router-link>
+        <router-link to="/parametros">Parámetros</router-link> 
         <a>Historial</a>
-        <a>Rangos</a>
         <a>Aplicación de Productos</a>
         <a>Cultivos</a>
         <a>Productos</a>

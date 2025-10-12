@@ -288,12 +288,12 @@ tbody tr:last-child td {
 
 @media (max-width: 600px) {
   .generate-btn {
-    grid-column: 1 / -1;   /* botón a lo ancho bajo los inputs */
+    grid-column: 1 / -1;  
     justify-self: stretch;
   }
 }
 
-/* En móviles: encabezado de resultados en columna limpia */
+
 @media (max-width: 768px) {
   .results-header {
     align-items: flex-start;
@@ -302,7 +302,7 @@ tbody tr:last-child td {
 
 .sortable {
   cursor: pointer;
-  user-select: none; /* Evita que el texto se seleccione al hacer clic */
+  user-select: none; 
 }
 .sortable:hover {
   background-color: rgb(72, 131, 33);

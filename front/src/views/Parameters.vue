@@ -1,51 +1,60 @@
+<!---->
 <template>
-  <div class="parameters-container">
-    <div class="header-section">
+  <div class="container-fluid parameters-container">
+    <div class="header-section mb-4">
       <h2>Parámetros de Alertas por Cuarto</h2>
-      <p>Configura los rangos de temperatura y humedad para cada cuarto.</p>
+      <p class="text-muted">Configura los rangos de temperatura y humedad para cada cuarto.</p>
     </div>
 
-    <div v-if="cargando" class="loading-message">Cargando parámetros...</div>
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="cargando" class="alert alert-info">Cargando parámetros...</div>
+    <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
-    <div class="parameters-grid">
-      <div v-for="param in parametros" :key="param.cuarto_id" class="param-card">
-        <div class="card-header">
-          <h3>{{ param.cuarto_nombre }}</h3>
-          <span class="room-code">{{ param.cuarto_codigo }}</span>
-        </div>
-
-        <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label :for="`temp_min_${param.cuarto_id}`">Temp. Mín (°C)</label>
-              <input type="number" :id="`temp_min_${param.cuarto_id}`" v-model.number="param.temp_min_c">
-            </div>
-            <div class="form-group">
-              <label :for="`temp_max_${param.cuarto_id}`">Temp. Máx (°C)</label>
-              <input type="number" :id="`temp_max_${param.cuarto_id}`" v-model.number="param.temp_max_c">
-            </div>
+    <div class="row">
+      <div v-for="param in parametros" :key="param.cuarto_id" class="col-12 col-sm-6 col-lg-4 col-xl-3 mb-4">
+        <div class="card param-card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">{{ param.cuarto_nombre }}</h5>
+            <span class="badge bg-secondary">{{ param.cuarto_codigo }}</span>
           </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label :for="`hum_min_${param.cuarto_id}`">Hum. Mín (%)</label>
-              <input type="number" :id="`hum_min_${param.cuarto_id}`" v-model.number="param.hum_min_pct">
-            </div>
-            <div class="form-group">
-              <label :for="`hum_max_${param.cuarto_id}`">Hum. Máx (%)</label>
-              <input type="number" :id="`hum_max_${param.cuarto_id}`" v-model.number="param.hum_max_pct">
-            </div>
+
+      <div class="card-body parameters-body">
+        <div class="row mb-3">
+          <div class="col-6">
+            <label :for="`temp_min_${param.cuarto_id}`" class="form-label">Temp. Mín (°C)</label>
+            <input type="number" class="form-control" :id="`temp_min_${param.cuarto_id}`" v-model.number="param.temp_min_c">
+          </div>
+          <div class="col-6">
+            <label :for="`temp_max_${param.cuarto_id}`" class="form-label">Temp. Máx (°C)</label>
+            <input type="number" class="form-control" :id="`temp_max_${param.cuarto_id}`" v-model.number="param.temp_max_c">
           </div>
         </div>
+        
+        <div class="row">
+          <div class="col-6">
+            <label :for="`hum_min_${param.cuarto_id}`" class="form-label">Hum. Mín (%)</label>
+            <input type="number" class="form-control" :id="`hum_min_${param.cuarto_id}`" v-model.number="param.hum_min_pct">
+          </div>
+          <div class="col-6">
+            <label :for="`hum_max_${param.cuarto_id}`" class="form-label">Hum. Máx (%)</label>
+            <input type="number" class="form-control" :id="`hum_max_${param.cuarto_id}`" v-model.number="param.hum_max_pct">
+          </div>
+        </div>
+      </div>
 
-        <div class="card-footer">
-          <button @click="guardarParametro(param)" :disabled="param.isSaving">
-            {{ param.isSaving ? 'Guardando...' : 'Guardar Cambios' }}
-          </button>
-          <span v-if="param.saveStatus" :class="`save-status ${param.saveStatus.type}`">
-            {{ param.saveStatus.message }}
-          </span>
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+              <button 
+                @click="guardarParametro(param)" 
+                :disabled="param.isSaving"
+                class="btn btn-primary"
+              >
+                {{ param.isSaving ? 'Guardando...' : 'Guardar Cambios' }}
+              </button>
+              <span v-if="param.saveStatus" :class="`save-status ${param.saveStatus.type}`">
+                {{ param.saveStatus.message }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

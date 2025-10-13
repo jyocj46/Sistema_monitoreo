@@ -1,147 +1,75 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-.section {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  background: #f8fafc;       /* leve contraste; ajusta si no te gusta */
-}
-
+/* Solo estilos personalizados que Bootstrap no cubre */
 .parameters-container {
-  padding: 1rem;
-}
-.header-section {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
-.header-section h2 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
-.parameters-grid {
-  display: grid;
-  gap: 1.5rem;
-  /* La magia del responsive: se ajusta automáticamente */
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  padding: 2rem;
 }
 
 .param-card {
-  background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: none;
 }
+
 .card-header {
-  padding: 1rem 1.5rem;
+  background-color: white;
   border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.card-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.room-code {
-  background-color: #f3f4f6;
-  color: #4b5563;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-.card-body {
-  padding: 1.5rem;
-  flex-grow: 1;
-}
-.form-row {
-  display: flex; 
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.form-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
-.form-group label {
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-}
 .card-footer {
-  padding: 1rem 1.5rem;
   background-color: #f9fafb;
   border-top: 1px solid #e5e7eb;
-  border-radius: 0 0 12px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
-.card-footer button {
-  padding: 0.6rem 1.2rem;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.card-footer button:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-.save-status {
-  font-weight: 600;
-  text-align: right;
-}
+
 .save-status.success {
-  color: #16a34a;
+  color: #198754;
+  font-weight: 600;
 }
+
 .save-status.error {
-  color: #dc2626;
+  color: #dc3545;
+  font-weight: 600;
 }
 
-@media (max-width: 768px) {
-  .parameters-grid {
-   display: grid;
-   gap: 1.5rem;
-   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  }
-  
-  .param-card { min-width: 0; }
-  
-  .form-row {
-    gap: 1rem; 
-    margin-bottom: 1rem;
-  }
+.form-control {
+  min-height: 45px;
+  border-radius: 6px;
 }
 
-@media (max-width: 520px) {
-  .form-row {
-    grid-template-columns: 1fr;   /* ⬅️ de 2 columnas a 1 */
-  }
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #4b5563;
 }
-@media (max-width: 420px) {
-  .form-row {
-    flex-direction: column; /* Apila los campos en pantallas muy pequeñas */
-  }
+
+.section-title {
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 2px solid #3b82f6;
+  padding-bottom: 0.5rem;
+}
+
+.temperature-section, .humidity-section {
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.parameters-body {
+  display: block !important;
+  padding: 1.5rem; 
+}
+
+.parameters-body .row {
+  margin-bottom: 1.5rem; 
+}
+
+.parameters-body .form-label {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.parameters-body .form-control {
+  min-height: 45px;
+  border-radius: 6px;
 }

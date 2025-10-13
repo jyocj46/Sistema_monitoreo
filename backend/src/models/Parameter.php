@@ -7,10 +7,10 @@ class Parameter {
             $this->pdo = $pdo;
         }
 
-        // Obtiene todos los parámetros, incluyendo los nombres de los cuartos
+        
         public function getTodosLosParametros(): array {
             $sql = "SELECT 
-                        p.cuarto_id,
+                        c.id AS cuarto_id,
                         c.nombre AS cuarto_nombre,
                         c.codigo AS cuarto_codigo,
                         p.temp_min_c,
@@ -20,7 +20,7 @@ class Parameter {
                         p.habilitado
                     FROM cuarto c
                     LEFT JOIN parametro_cuarto p ON c.id = p.cuarto_id
-                    ORDER BY c.id ASC"; 
+                    ORDER BY c.id ASC";
             
             $stmt = $this->pdo->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);

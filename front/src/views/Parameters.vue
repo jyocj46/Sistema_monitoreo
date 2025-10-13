@@ -1,6 +1,14 @@
 <!---->
 <template>
   <div class="container-fluid parameters-container">
+
+      <div class="unit-toggle-container">
+        <div class="unit-toggle">
+          <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
+          <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
+        </div>
+      </div>
+
     <div class="header-section mb-4">
       <h2>Parámetros de Alertas por Cuarto</h2>
       <p class="text-muted">Configura los rangos de temperatura y humedad para cada cuarto.</p>
@@ -20,36 +28,55 @@
       <div class="card-body parameters-body">
         <div class="row mb-3">
           <div class="col-6">
-            <label :for="`temp_min_${param.cuarto_id}`" class="form-label">Temp. Mín (°C)</label>
-            <input type="number" class="form-control" :id="`temp_min_${param.cuarto_id}`" v-model.number="param.temp_min_c">
+            <label :for="`temp_min_${param.cuarto_id}`" class="form-label">Temp. Mín (°{{ displayUnit }})</label>
+            <input type="number" class="form-control" :id="`temp_min_${param.cuarto_id}`" :disabled="!param.isEditing" :value="displayTemp(param.temp_min_c)" @input="updateTempValue(param, 'temp_min_c', $event.target.value)">
           </div>
           <div class="col-6">
-            <label :for="`temp_max_${param.cuarto_id}`" class="form-label">Temp. Máx (°C)</label>
-            <input type="number" class="form-control" :id="`temp_max_${param.cuarto_id}`" v-model.number="param.temp_max_c">
+            <label :for="`temp_max_${param.cuarto_id}`" class="form-label">Temp. Máx (°{{ displayUnit }})</label>
+            <input type="number" class="form-control" :id="`temp_max_${param.cuarto_id}`" :disabled="!param.isEditing"
+                :value="displayTemp(param.temp_max_c)"
+                @input="updateTempValue(param, 'temp_max_c', $event.target.value)">
           </div>
         </div>
         
         <div class="row">
           <div class="col-6">
             <label :for="`hum_min_${param.cuarto_id}`" class="form-label">Hum. Mín (%)</label>
-            <input type="number" class="form-control" :id="`hum_min_${param.cuarto_id}`" v-model.number="param.hum_min_pct">
+            <input type="number" class="form-control" :disabled="!param.isEditing" :id="`hum_min_${param.cuarto_id}`"  v-model.number="param.hum_min_pct">
           </div>
           <div class="col-6">
             <label :for="`hum_max_${param.cuarto_id}`" class="form-label">Hum. Máx (%)</label>
-            <input type="number" class="form-control" :id="`hum_max_${param.cuarto_id}`" v-model.number="param.hum_max_pct">
+            <input type="number" class="form-control" :disabled="!param.isEditing" :id="`hum_max_${param.cuarto_id}`" v-model.number="param.hum_max_pct">
           </div>
         </div>
       </div>
 
           <div class="card-footer">
             <div class="d-flex justify-content-between align-items-center">
+                  <button 
+                  v-if="!param.isEditing"
+                  @click="activarEdicion(param)" 
+                  class="btn btn-warning"
+                >
+                  Editar Parámetros
+                </button>
+
+            <div v-else class="d-flex gap-2">
               <button 
                 @click="guardarParametro(param)" 
                 :disabled="param.isSaving"
-                class="btn btn-primary"
+                class="btn btn-success"
               >
                 {{ param.isSaving ? 'Guardando...' : 'Guardar Cambios' }}
               </button>
+              <button 
+                @click="cerrarEdicion(param)" 
+                :disabled="param.isSaving"
+                class="btn btn-secondary"
+              >
+                Cerrar
+              </button>
+            </div>
               <span v-if="param.saveStatus" :class="`save-status ${param.saveStatus.type}`">
                 {{ param.saveStatus.message }}
               </span>
@@ -70,13 +97,65 @@ const parametros = ref([]);
 const cargando = ref(true);
 const error = ref(null);
 
+const displayUnit = ref('F'); 
+
+const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
+const toCelsius = (fahrenheit) => (fahrenheit - 32) * 5 / 9;
+
+
+const displayTemp = (celsius) => {
+  if (celsius === null || celsius === undefined) return '';
+  
+  if (displayUnit.value === 'F') {
+    const fahrenheit = toFahrenheit(celsius);
+    // Si es un número "redondo", mostrar sin decimales
+    if (fahrenheit % 1 === 0) {
+      return fahrenheit;
+    } else {
+      // Si tiene decimales, mostrar con 1 decimal
+      return parseFloat(fahrenheit.toFixed(1));
+    }
+  } else {
+    // Para Celsius mantenemos 2 decimales
+    return parseFloat(celsius.toFixed(2));
+  }
+};
+
+const updateTempValue = (param, field, inputValue) => {
+  const numericValue = parseFloat(inputValue);
+  if (isNaN(numericValue)) {
+    param[field] = null; 
+    return;
+  }
+  
+  if (displayUnit.value === 'F') {
+    // Convertir Fahrenheit a Celsius para almacenar
+    const celsiusValue = toCelsius(numericValue);
+    param[field] = parseFloat(celsiusValue.toFixed(2)); // Almacenar con precisión
+  } else {
+    param[field] = numericValue;
+  }
+};
 onMounted(async () => {
   try {
+
+    cargando.value = true; 
+    error.value = null;
+
     const response = await fetch(`${API_BASE}/parametros`);
     const result = await response.json();
     if (result.success) {
-      // Añadimos propiedades reactivas para el estado de guardado
-      parametros.value = result.data.map(p => ({ ...p, isSaving: false, saveStatus: null }));
+      
+      parametros.value = result.data.map(p => ({ 
+        ...p, 
+        temp_min_c: p.temp_min_c !== null ? parseFloat(p.temp_min_c) : null,
+        temp_max_c: p.temp_max_c !== null ? parseFloat(p.temp_max_c) : null,
+        hum_min_pct: p.hum_min_pct !== null ? parseFloat(p.hum_min_pct) : null,
+        hum_max_pct: p.hum_max_pct !== null ? parseFloat(p.hum_max_pct) : null,
+        isEditing: false,
+        isSaving: false, 
+        saveStatus: null 
+      }));
     } else {
       throw new Error(result.message || 'Error en la API');
     }
@@ -112,9 +191,28 @@ const guardarParametro = async (param) => {
     param.saveStatus = { type: 'error', message: 'Error' };
   } finally {
     param.isSaving = false;
-    // Oculta el mensaje de estado después de 3 segundos
+    
     setTimeout(() => { param.saveStatus = null; }, 3000);
   }
 };
+
+// Función para activar edición
+const activarEdicion = (param) => {
+  param.isEditing = true;
+  // Guardar valores originales por si cancela
+  param.valoresOriginales = {
+    temp_min_c: param.temp_min_c,
+    temp_max_c: param.temp_max_c,
+    hum_min_pct: param.hum_min_pct,
+    hum_max_pct: param.hum_max_pct
+  };
+};
+
+
+const cerrarEdicion = (param) => {
+  param.isEditing = false;
+};
+
+
 </script>
 

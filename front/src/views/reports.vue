@@ -23,6 +23,9 @@ const displayUnit = ref('F');
 const currentPage = ref(1);
 const itemsPerPage = 20;
 const pageInput = ref(1);
+const horaInicio = ref('');
+const horaFin = ref('');
+
 const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
 
 const chartDataConverted = computed(() => {
@@ -154,6 +157,14 @@ const generarReporte = async () => {
     try {
 
       let baseUrl = `?fecha_inicio=${fechaInicio.value}&fecha_fin=${fechaFin.value}`;
+
+      if (horaInicio.value) {
+        baseUrl += `&hora_inicio=${horaInicio.value}`;
+      }
+      if (horaFin.value) {
+        baseUrl += `&hora_fin=${horaFin.value}`;
+      }
+
       if (filtroCuartoId.value) {
         baseUrl += `&cuarto_id=${filtroCuartoId.value}`;
       }
@@ -207,61 +218,94 @@ const prevPage = () => {
 
 
 <template>
-  <div class="reports-container">
+  <div class="reports-container container py-3">
+
     <div class="header-section">
-      <h2>Generador de Reportes</h2>
-      <p>Selecciona un rango de fechas para generar el reporte de monitoreo</p>
+      <h2 class="fw-semibold">Generador de Reportes</h2>
+      <p class="text-muted">Selecciona un rango de fechas para generar el reporte de monitoreo</p>
     </div>
 
     <div class="filters-section">
-      <div class="filters">
-        <div class="form-group">
-          <label for="fechaInicio">Fecha de Inicio</label>
-          <input type="date" id="fechaInicio" v-model="fechaInicio" />
+      <div class="card filters-card">
+        <div class="card-header">
+          <h5 class="mb-0">Filtros del Reporte</h5>
         </div>
-        <div class="form-group">
-          <label for="fechaFin">Fecha de Fin</label>
-          <input type="date" id="fechaFin" v-model="fechaFin" />
+        <div class="filters-container">
+          <div class="row filters-row">
+            <div class="col-12 col-sm-6 col-md-4 form-group">
+              <label for="fechaInicio" class="form-label">Fecha de Inicio</label>
+              <input type="date" id="fechaInicio" v-model="fechaInicio" class="form-control" />
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 form-group">
+              <label for="fechaFin" class="form-label">Fecha de Fin</label>
+              <input type="date" id="fechaFin" v-model="fechaFin" class="form-control" />
+            </div>
+       
+            <div class="col-12 col-sm-6 col-md-4 form-group">
+              <label for="horaInicio" class="form-label">Hora de Inicio</label>
+              <input type="time" id="horaInicio" v-model="horaInicio" class="form-control" />
+            </div>
+
+            <div class="col-12 col-sm-6 col-md-4 form-group">
+              <label for="horaFin" class="form-label">Hora de Fin</label>
+              <input type="time" id="horaFin" v-model="horaFin" class="form-control" />
+            </div>
+
+            <div class="col-12 col-md-4 form-group">
+              <label for="filtroCuarto" class="form-label">Filtrar por Cuarto</label>
+              <select id="filtroCuarto" v-model="filtroCuartoId" class="form-select">
+                <option value="">-- Todos los cuartos --</option>
+                <option v-for="cuarto in cuartos" :key="cuarto.id" :value="cuarto.id">
+                  {{ cuarto.nombre }} ({{ cuarto.codigo }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <div class="generate-btn-container">
+                <button @click="generarReporte" :disabled="cargando" class="generate-btn">
+                  {{ cargando ? 'Generando...' : 'Generar Reporte' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-
-      <div class="form-group">
-        <label for="filtroCuarto">Filtrar por Cuarto:</label>
-        <select id="filtroCuarto" v-model="filtroCuartoId">
-          <option value="">-- Todos --</option>
-          <option v-for="cuarto in cuartos" :key="cuarto.id" :value="cuarto.id">
-            {{ cuarto.nombre }} ({{ cuarto.codigo }})
-          </option>
-        </select>
-      </div>
-
-        <button @click="generarReporte" :disabled="cargando" class="generate-btn">
-          {{ cargando ? 'Generando...' : 'Generar Reporte' }}
-        </button>
       </div>
     </div>
 
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <!-- Error -->
+    <div v-if="error" class="alert alert-danger text-center">{{ error }}</div>
 
-    <div v-if="reporteGenerado && !cargando">
+    <!-- Gráfica -->
+    <div v-if="reporteGenerado && !cargando" class="chart-section">
       <div class="unit-toggle">
-        <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
-        <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
+        <button :class="['btn btn-sm', displayUnit === 'C' ? 'btn-primary' : 'btn-outline-primary']"
+                @click="displayUnit = 'C'">°C</button>
+        <button :class="['btn btn-sm', displayUnit === 'F' ? 'btn-primary' : 'btn-outline-secondary']"
+                @click="displayUnit = 'F'">°F</button>
       </div>
-      <TemperatureChart v-if="chartDataConverted" :chart-data="chartDataConverted" :display-unit="displayUnit" />
+
+      <div class="chart-responsive">
+        <TemperatureChart v-if="chartDataConverted"
+                          :chart-data="chartDataConverted"
+                          :display-unit="displayUnit" />
+      </div>
     </div>
 
+    <!-- Resultados -->
     <div v-if="resultados.length > 0" class="results-section">
-      <div class="results-header">
-        <h3>Resultados del Reporte</h3>
+      <div class="results-header d-flex flex-wrap justify-content-between align-items-center">
+        <h3 class="h5 mb-0">Resultados del Reporte</h3>
         <div class="results-actions">
           <ExportButtons :data="exportData" filename="reporte_monitoreo" />
         </div>
       </div>
 
-     <div v-if="resultados.length > 0" class="results-section">
-      <div class="table-container">
-        <table>
-          <thead>
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-success">
             <tr>
               <th @click="toggleSortOrder" class="sortable">
                 Fecha y Hora
@@ -277,46 +321,49 @@ const prevPage = () => {
             <tr v-for="lectura in paginatedResultados" :key="lectura.id">
               <td>{{ new Date(lectura.tomado_en_utc).toLocaleString() }}</td>
               <td>{{ lectura.cuarto_nombre || `Sensor ${lectura.sensor_id}` }}</td>
-              <td>{{ displayTemp(lectura.temperatura_c) }}</td>
+              <td class="fw-semibold">{{ displayTemp(lectura.temperatura_c) }}</td>
               <td>{{ lectura.humedad_pct.toFixed(2) }}</td>
             </tr>
           </tbody>
         </table>
-              <div v-if="totalPages > 1" class="pagination-controls">
-                <button @click="goToPage(1)" :disabled="currentPage === 1">
-                  &laquo;&laquo;
-                </button>
-                <button @click="prevPage" :disabled="currentPage === 1">
-                  &laquo; Anterior
-                </button>
+      </div>
 
-                <span class="page-indicator">
-                  Página 
-                  <input 
-                    type="number" 
-                    v-model.number="pageInput" 
-                    @keyup.enter="goToPageFromInput"
-                    class="page-input"
-                  /> 
-                  de {{ totalPages }}
-                </span>
+      <!-- Paginación -->
+      <div v-if="totalPages > 1" class="pagination-controls">
+        <button @click="goToPage(1)" :disabled="currentPage === 1" class="btn btn-outline-secondary btn-sm">
+          &laquo;&laquo;
+        </button>
+        <button @click="prevPage" :disabled="currentPage === 1" class="btn btn-outline-secondary btn-sm">
+          Anterior
+        </button>
 
-                <button @click="nextPage" :disabled="currentPage === totalPages">
-                  Siguiente &raquo;
-                </button>
-                <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages">
-                  &raquo;&raquo;
-                </button>
-              </div>
-        </div>  
+        <span class="page-indicator d-flex align-items-center gap-2">
+          <span>Página</span>
+          <input type="number" v-model.number="pageInput" @keyup.enter="goToPageFromInput"
+                 class="form-control form-control-sm text-center" style="width:70px;" />
+          <span>de {{ totalPages }}</span>
+        </span>
+
+        <button @click="nextPage" :disabled="currentPage === totalPages" class="btn btn-outline-secondary btn-sm">
+          Siguiente
+        </button>
+        <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="btn btn-outline-secondary btn-sm">
+          &raquo;&raquo;
+        </button>
       </div>
     </div>
 
+    <!-- Sin resultados -->
     <div v-else-if="!cargando && !error && reporteGenerado" class="no-results">
-      <div class="no-results-content">
+      <div class="no-results-content text-center">
         <span class="no-results-icon">📊</span>
         <p>No se encontraron registros para el rango de fechas seleccionado.</p>
       </div>
     </div>
   </div>
 </template>
+
+
+
+
+

@@ -45,5 +45,5 @@ class Parameter {
                 ':hum_min_pct' => $data['hum_min_pct'] ?? null,
                 ':hum_max_pct' => $data['hum_max_pct'] ?? null,
             ]);
-        }
+    }
 }

@@ -30,17 +30,16 @@
       </section>
 
       <section class="cards">
-        <article v-for="r in ultimasPorCuarto" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
+        <article v-for="r in ultimasPorCuarto" :class="[{ 'in-alert': r.en_alerta },r.en_alerta ? 'border-danger border-2 alert-glow' : 'border-0 shadow-sm']" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
           <div class="card-head">
             <div class="head-left">
-              <span class="badge">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
-              <span class="ago">{{ fromNow(r?.tomado_en_utc) }}</span>
+                <span class="badge" :class="r.en_alerta ? 'bg-danger' : 'bg-primary'">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
+                <span class="ago text-muted">{{ fromNow(r?.tomado_en_utc) }}</span>
             </div>
             <div class="head-right">
-              <!-- Iconos SVG -->
-              <svg viewBox="0 0 24 24" class="icon"><path d="M3 17h2v4H3zM7 13h2v8H7zM11 9h2v12h-2zM15 5h2v16h-2zM19 1h2v20h-2z"/></svg>
-             <!--  <svg viewBox="0 0 24 24" class="icon"><path d="M16 7H3a2 2 0 00-2 2v6a2 2 0 002 2h13a2 2 0 002-2V9a2 2 0 00-2-2zm5 3v4"/></svg>
-              <svg viewBox="0 0 24 24" class="icon"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>-->
+              <svg viewBox="0 0 24 24" class="icon" :class="r.en_alerta ? 'text-danger' : 'text-secondary'">
+                  <path d="M3 17h2v4H3zM7 13h2v8H7zM11 9h2v12h-2zM15 5h2v16h-2zM19 1h2v20h-2z"/>
+              </svg>
             </div>
           </div>
 
@@ -57,12 +56,18 @@
 
           <div class="card-foot">
             <div>
-              <div class="room">{{ roomName(r) }}</div>
-              <span class="pill">
-                Humedad: {{ r?.humedad_pct !== undefined && r?.humedad_pct !== null ? `${r.humedad_pct.toFixed(2)} %` : '--' }}
-              </span>
+              <div class="room fw-semibold">{{ roomName(r) }}</div>
+                <span class="pill"
+                      :class="r.en_alerta ? 'bg-danger-subtle text-danger-emphasis' : 'bg-light text-secondary'">
+                  Humedad:
+                  {{
+                    r?.humedad_pct !== undefined && r?.humedad_pct !== null
+                      ? `${r.humedad_pct.toFixed(2)} %`
+                      : '--'
+                  }}
+                </span>
             </div>
-             <button class="link" @click="openModalChart(r)">Ver más</button>
+             <button class="link btn btn-sm" :class="r.en_alerta ? 'btn-outline-danger' : 'btn-outline-secondary'" @click="openModalChart(r)">Ver más</button>
           </div>
         </article>
 
@@ -110,7 +115,8 @@ const MQTT_USER = import.meta.env.VITE_MQTT_USERNAME || undefined
 const MQTT_PASS = import.meta.env.VITE_MQTT_PASSWORD || undefined 
 const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC || 'cuartos_frios/lecturas'
 
-
+const alertasActivas = ref([]);
+let alertPollingInterval = null;
 const conectado = ref(false);
 const lecturas = ref([]);
 const actual = ref(null);
@@ -179,6 +185,7 @@ const chartSeries = computed(() => {
 
 const ultimasPorCuarto = computed(() => {
   const map = new Map()
+
   for (const r of lecturas.value) {
     const key = r?.cuarto_id ?? r?.sensor_id ?? r?.id
     if (key === undefined || key === null) continue
@@ -191,14 +198,24 @@ const ultimasPorCuarto = computed(() => {
       if (tNow > tPrev) map.set(key, r)
     }
   }
+
+
   const arr = Array.from(map.values())
+  
+  
   arr.sort((a, b) =>
     String(a?.cuarto_id ?? a?.sensor_id ?? a?.id).localeCompare(
       String(b?.cuarto_id ?? b?.sensor_id ?? b?.id)
     )
   )
-  return arr
-})
+
+  // Mapeamos el resultado final para añadir el estado de alerta
+  return arr.map(lectura => {
+    const alerta = alertasActivas.value.find(a => a.cuarto_id === lectura.cuarto_id);
+    return { ...lectura, en_alerta: !!alerta }; // Añade 'en_alerta: true' si se encuentra
+  });
+});
+
 
 onMounted(async () => { 
   await cargarNombresDeCuartos(); 
@@ -259,14 +276,14 @@ onMounted(async () => {
       console.error('Mensaje MQTT inválido', e);
     }
   });
+      fetchAlertasActivas(); 
+    alertPollingInterval = setInterval(fetchAlertasActivas, 10000);
 });
 
 onUnmounted(() => {
-  if (client) {
-    try { client.end(true) } catch {}
-    client = null
-  }
-})
+  if (client) client.end(true);
+  clearInterval(alertPollingInterval); 
+});
 
 const cargarDatosCards = async () => {
   try {
@@ -416,5 +433,17 @@ const cargarNombresDeCuartos = async () => {
 const displayTemp = (celsius) => {
   if (celsius === undefined || celsius === null) return '--';
   return (displayUnit.value === 'F' ? toFahrenheit(celsius) : celsius).toFixed(2);
+};
+
+const fetchAlertasActivas = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/alertas/activas`);
+    const result = await response.json();
+    if (result.success) {
+      alertasActivas.value = result.data;
+    }
+  } catch (e) {
+    console.error("Error al obtener alertas activas:", e);
+  }
 };
 </script>

@@ -34,7 +34,6 @@ foreach ($possible_paths as $p) {
         break;
     }
 }
-
 if (!$db_loaded) {
     http_response_code(500);
     echo json_encode(['error' => 'No se pudo encontrar db.php']);
@@ -71,7 +70,7 @@ if (!$controller_loaded) {
 }
 
 /* ===========================
-   3) Cargar ParameterController (NUEVO)
+   3) Cargar ParameterController
    =========================== */
 $param_controller_guess = $db_path
     ? str_replace('config/db.php', 'controllers/ParameterController.php', $db_path)
@@ -100,18 +99,39 @@ if (!$param_loaded) {
 }
 
 /* ===========================
-   4) Router
+   3.5) Cargar AlertController (NUEVO)
    =========================== */
+$alert_controller_guess = $db_path
+    ? str_replace('config/db.php', 'controllers/AlertController.php', $db_path)
+    : null;
+
+$alert_controller_paths = array_values(array_unique(array_filter([
+    $alert_controller_guess,
+    __DIR__ . '/../src/controllers/AlertController.php',
+    __DIR__ . '/../../src/controllers/AlertController.php',
+    __DIR__ . '/src/controllers/AlertController.php',
+    '/home1/detponco/src/controllers/AlertController.php'
+])));
+
+$alert_loaded = false;
+foreach ($alert_controller_paths as $actrl) {
+    if ($actrl && file_exists($actrl)) {
+        require_once $actrl;
+        $alert_loaded = true;
+        break;
+    }
+}
+
 try {
     $req_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $req_path = str_replace('/api', '', $req_path);
     $req_path = $req_path ?: '/';
     $method   = $_SERVER['REQUEST_METHOD'];
 
-    // Instancias de controladores
-    // Nota: $pdo debe venir de db.php
+    // Instancias de controladores (pdo viene de db.php)
     $controller      = new TemperatureController($pdo);
     $paramController = new ParameterController($pdo);
+    $alertController = $alert_loaded ? new AlertController($pdo) : null;
 
     switch (true) {
 
@@ -124,7 +144,6 @@ try {
             $fechaFin    = $_GET['fecha_fin'] ?? null;
             $sortOrder   = $_GET['sort'] ?? 'DESC';
 
-            // ✅ Deja solo UNA llamada
             $result = $controller->getLecturas($sensorId, $cuartoId, $limit, $fechaInicio, $fechaFin, $sortOrder);
             echo json_encode($result);
             break;
@@ -170,7 +189,7 @@ try {
             echo json_encode($result);
             break;
 
-        /* ====== Parámetros (NUEVO) ====== */
+        /* ====== Parámetros ====== */
         case $req_path === '/parametros' && $method === 'GET':
             $result = $paramController->getParametros();
             echo json_encode($result);
@@ -188,13 +207,25 @@ try {
             echo json_encode($result);
             break;
 
+        /* ====== Alertas (NUEVO) ====== */
+        case $req_path === '/alertas/activas' && $method === 'GET':
+            if (!$alertController) {
+                http_response_code(404);
+                echo json_encode(['error' => 'AlertController no disponible']);
+                break;
+            }
+            $result = $alertController->getActivas();
+            echo json_encode($result);
+            break;
+
         /* ====== Default ====== */
         default:
             http_response_code(404);
             echo json_encode(['error' => 'Endpoint no encontrado: ' . $req_path]);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    // Captura también fatales en PHP >=7
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
 }

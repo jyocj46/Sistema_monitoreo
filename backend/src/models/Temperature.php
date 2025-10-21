@@ -1,11 +1,15 @@
 <?php
 // /src/models/Temperature.php
+
+require_once __DIR__ . '/Alerta.php';
+
 class Temperature {
     private $pdo;
+    private $alertaModel; 
     
     public function __construct($pdo) { 
         $this->pdo = $pdo; 
-        // Recomendado para LIMIT dinámico:
+        $this->alertaModel = new Alerta($pdo);
         $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     }
@@ -145,7 +149,17 @@ class Temperature {
             $local_now_corrected = $this->pdo->query("SELECT DATE_SUB(NOW(), INTERVAL 1 HOUR)")->fetchColumn();
             $stmt->bindValue(':ingresado_en', $local_now_corrected);
 
-            return $stmt->execute();
+            $success = $stmt->execute();
+
+            if ($success) {
+            $this->alertaModel->verificarYGestionarAlertas([
+                'cuarto_id'     => $cuartoId,
+                'sensor_id'     => $sensorId,
+                'temperatura_c' => $temperatura,
+                'humedad_pct'   => $humedad
+            ]);
+        }
+            return $success;
     }
 
     public function getEstadisticasCuarto(int $roomId, string $periodo = 'DAY'): array {

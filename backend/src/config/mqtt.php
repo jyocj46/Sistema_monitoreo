@@ -67,7 +67,6 @@ function handleMqttMessage($message) {
 }
 
 
-// Función para guardar en la base de datos
 function saveReadingToDatabase($cuarto_id, $sensor_id, $temperatura_c, $humedad_pct, $estado) {
     global $pdo;
     $sql = "
@@ -87,7 +86,6 @@ function saveReadingToDatabase($cuarto_id, $sensor_id, $temperatura_c, $humedad_
     echo "✅ Lectura guardada en base de datos.\n";
 }
 
-// Mantener la conexión MQTT abierta para recibir mensajes
 while ($client->isConnected()) {
     $client->loop();
 }

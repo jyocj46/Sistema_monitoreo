@@ -10,17 +10,21 @@ class Temperature {
     public function __construct($pdo) { 
         $this->pdo = $pdo; 
         $this->alertaModel = new Alerta($pdo);
-        $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); // más seguro
     }
-    
-    public function getLecturas(?int $sensorId, ?int $cuartoId, int $limit = 200, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $sortOrder = 'DESC'): array {
+
+    public function getLecturas(?int $sensorId, ?int $cuartoId, int $limit = 200,
+        ?string $fechaInicio = null, ?string $fechaFin = null,
+        ?string $horaInicio = null, ?string $horaFin = null, ?string $sortOrder = 'DESC'): array
+        {
         $limit = max(1, (int)$limit);
 
-        // Consulta base (sin cambios)
         $sql = "SELECT 
                     m.id, m.cuarto_id, m.sensor_id, m.temperatura_c, m.humedad_pct,
                     m.estado, m.tomado_en_utc, m.ingresado_en,
+                    DATE_ADD(m.ingresado_en, INTERVAL 1 HOUR) AS ingresado_local,
                     r.nombre AS cuarto_nombre, r.codigo AS cuarto_codigo,
                     s.codigo AS sensor_codigo, s.ubicacion AS sensor_ubicacion
                 FROM lectura m
@@ -35,25 +39,36 @@ class Temperature {
             $params[':sensor_id'] = $sensorId;
         }
         if ($cuartoId !== null) {
-            $sql .= " AND m.cuarto_id = :room_id"; 
+            $sql .= " AND m.cuarto_id = :room_id";
             $params[':room_id'] = $cuartoId;
         }
 
         if ($fechaInicio !== null) {
-            $sql .= " AND DATE(m.tomado_en_utc) >= :fecha_inicio";
-            $params[':fecha_inicio'] = $fechaInicio;
-        }
-        if ($fechaFin !== null) {
-            $sql .= " AND DATE(m.tomado_en_utc) <= :fecha_fin";
-            $params[':fecha_fin'] = $fechaFin;
+            $fechaHoraInicio = $fechaInicio . ' ' . ($horaInicio ?? '00:00:00');
+            
+            // Ajustar fecha de inicio restando 1 hora
+            $stmtTmp = $this->pdo->prepare("SELECT DATE_SUB(:fh, INTERVAL 1 HOUR)");
+            $stmtTmp->execute([':fh' => $fechaHoraInicio]);
+            $ajusteInicio = $stmtTmp->fetchColumn();
+
+            $sql .= " AND m.ingresado_en >= :fecha_inicio";
+            $params[':fecha_inicio'] = $ajusteInicio;
         }
 
-        $order = 'DESC';
-            if (strtoupper($sortOrder) === 'ASC') {
-                $order = 'ASC';
-            }
-        
-        $sql .= " ORDER BY m.tomado_en_utc $order";
+        if ($fechaFin !== null) {
+            $fechaHoraFin = $fechaFin . ' ' . ($horaFin ?? '23:59:59');
+
+            // Ajustar fecha de fin restando 1 hora
+            $stmtTmp = $this->pdo->prepare("SELECT DATE_SUB(:fh, INTERVAL 1 HOUR)");
+            $stmtTmp->execute([':fh' => $fechaHoraFin]);
+            $ajusteFin = $stmtTmp->fetchColumn();
+
+            $sql .= " AND m.ingresado_en <= :fecha_fin";
+            $params[':fecha_fin'] = $ajusteFin;
+        }
+
+        $order = (strtoupper($sortOrder) === 'ASC') ? 'ASC' : 'DESC';
+        $sql .= " ORDER BY m.ingresado_en $order, m.id $order";
 
         if ($fechaInicio === null && $fechaFin === null) {
             $sql .= " LIMIT :limit";
@@ -64,7 +79,6 @@ class Temperature {
         foreach ($params as $key => &$val) {
             $stmt->bindValue($key, $val, is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
-
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -77,38 +91,39 @@ class Temperature {
 
     public function getUltimas(string $by = 'cuarto'): array {
         if ($by === 'sensor') {
-            $sql = "SELECT m.*, 
-                           r.name AS room_name, r.code AS room_code,
-                           s.code AS sensor_code, s.position_note AS sensor_position
-                    FROM measurements_raw m
-                    INNER JOIN (
-                        SELECT sensor_id, MAX(recorded_at_utc) AS max_ts
-                        FROM measurements_raw
-                        GROUP BY sensor_id
-                    ) u ON m.sensor_id = u.sensor_id AND m.recorded_at_utc = u.max_ts
-                    INNER JOIN room r   ON m.room_id   = r.id
-                    INNER JOIN sensor s ON m.sensor_id = s.id
-                    WHERE s.is_active = 1
-                    ORDER BY m.sensor_id ASC";
+            $sql = "
+                SELECT id, cuarto_id, sensor_id, temperatura_c, humedad_pct, estado,
+                    tomado_en_utc, ingresado_en,
+                    r.nombre AS cuarto_nombre, r.codigo AS cuarto_codigo,
+                    s.codigo AS sensor_codigo, s.ubicacion AS sensor_ubicacion
+                FROM (
+                    SELECT m.*,
+                        ROW_NUMBER() OVER (PARTITION BY m.sensor_id ORDER BY m.tomado_en_utc DESC) AS rn
+                    FROM lectura m
+                ) x
+                INNER JOIN cuarto r ON x.cuarto_id = r.id
+                INNER JOIN sensor s ON x.sensor_id = s.id
+                WHERE rn = 1 AND s.activo = 1
+                ORDER BY x.sensor_id ASC";
         } else {
-            $sql = "SELECT m.*, 
-                           r.name AS room_name, r.code AS room_code,
-                           s.code AS sensor_code, s.position_note AS sensor_position
-                    FROM measurements_raw m
-                    INNER JOIN (
-                        SELECT room_id, MAX(recorded_at_utc) AS max_ts
-                        FROM measurements_raw
-                        GROUP BY room_id
-                    ) u ON m.room_id = u.room_id AND m.recorded_at_utc = u.max_ts
-                    INNER JOIN room r   ON m.room_id   = r.id
-                    INNER JOIN sensor s ON m.sensor_id = s.id
-                    WHERE s.is_active = 1
-                    ORDER BY m.room_id ASC";
+            $sql = "
+                SELECT id, cuarto_id, sensor_id, temperatura_c, humedad_pct, estado,
+                    tomado_en_utc, ingresado_en,
+                    r.nombre AS cuarto_nombre, r.codigo AS cuarto_codigo,
+                    s.codigo AS sensor_codigo, s.ubicacion AS sensor_ubicacion
+                FROM (
+                    SELECT m.*,
+                        ROW_NUMBER() OVER (PARTITION BY m.cuarto_id ORDER BY m.tomado_en_utc DESC) AS rn
+                    FROM lectura m
+                ) x
+                INNER JOIN cuarto r ON x.cuarto_id = r.id
+                INNER JOIN sensor s ON x.sensor_id = s.id
+                WHERE rn = 1 AND s.activo = 1
+                ORDER BY x.cuarto_id ASC";
         }
-
-        $stmt = $this->pdo->query($sql);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     }
+
     
     public function insertarLectura(
         int $cuartoId,
@@ -162,29 +177,29 @@ class Temperature {
             return $success;
     }
 
-    public function getEstadisticasCuarto(int $roomId, string $periodo = 'DAY'): array {
+    public function getEstadisticasCuarto(int $cuartoId, string $periodo = 'DAY'): array {
         $periodo = strtoupper($periodo);
         $allowed = ['HOUR','DAY','WEEK','MONTH'];
-        if (!in_array($periodo, $allowed)) $periodo = 'DAY';
+        if (!in_array($periodo, $allowed, true)) $periodo = 'DAY';
 
-        // Agrega por día (como hacía tu versión anterior) sobre recorded_at_utc
+        // Ventana móvil de 1 periodo hacia atrás desde ahora (UTC)
         $sql = "SELECT 
-                    COUNT(*)              AS total_lecturas,
-                    AVG(temperature_c)    AS temp_promedio,
-                    MIN(temperature_c)    AS temp_minima,
-                    MAX(temperature_c)    AS temp_maxima,
-                    AVG(humidity_pct)     AS hum_promedio,
-                    MIN(humidity_pct)     AS hum_minima,
-                    MAX(humidity_pct)     AS hum_maxima,
-                    DATE(recorded_at_utc) AS fecha
-                FROM measurements_raw
-                WHERE room_id = :room_id
-                  AND recorded_at_utc >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 $periodo)
-                GROUP BY DATE(recorded_at_utc)
+                    COUNT(*)                 AS total_lecturas,
+                    AVG(temperatura_c)       AS temp_promedio,
+                    MIN(temperatura_c)       AS temp_minima,
+                    MAX(temperatura_c)       AS temp_maxima,
+                    AVG(humedad_pct)         AS hum_promedio,
+                    MIN(humedad_pct)         AS hum_minima,
+                    MAX(humedad_pct)         AS hum_maxima,
+                    DATE(tomado_en_utc)      AS fecha
+                FROM lectura
+                WHERE cuarto_id = :cuarto_id
+                AND tomado_en_utc >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 $periodo)
+                GROUP BY DATE(tomado_en_utc)
                 ORDER BY fecha DESC";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':room_id' => $roomId]);
+        $stmt->execute([':cuarto_id' => $cuartoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -219,26 +234,26 @@ class Temperature {
         return $alerts;
     }
 
-    public function getPromediosDiarios(?string $fechaInicio, ?string $fechaFin, ?int $cuartoId) {
-        
+    public function getPromediosDiarios(?string $fechaInicio, ?string $fechaFin, ?int $cuartoId,
+        ?string $horaInicio = null, ?string $horaFin = null) {
+
         $sql = "SELECT
-                    DATE(m.tomado_en_utc) AS fecha,
+                    DATE(m.ingresado_en) AS fecha,
                     m.cuarto_id,
                     r.nombre AS cuarto_nombre,
                     AVG(m.temperatura_c) AS temp_promedio
                 FROM lectura m
                 INNER JOIN cuarto r ON m.cuarto_id = r.id
                 WHERE 1=1";
-        
         $params = [];
 
         if ($fechaInicio !== null) {
-            $sql .= " AND DATE(m.tomado_en_utc) >= :fecha_inicio";
-            $params[':fecha_inicio'] = $fechaInicio;
+            $sql .= " AND m.ingresado_en >= :fecha_inicio";
+            $params[':fecha_inicio'] = $fechaInicio . ' ' . ($horaInicio ?? '00:00:00');
         }
         if ($fechaFin !== null) {
-            $sql .= " AND DATE(m.tomado_en_utc) <= :fecha_fin";
-            $params[':fecha_fin'] = $fechaFin;
+            $sql .= " AND m.ingresado_en <= :fecha_fin";
+            $params[':fecha_fin'] = $fechaFin . ' ' . ($horaFin ?? '23:59:59');
         }
         if ($cuartoId !== null) {
             $sql .= " AND m.cuarto_id = :cuarto_id";

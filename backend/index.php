@@ -142,9 +142,11 @@ try {
             $limit       = isset($_GET['limit']) ? max(1, min((int)$_GET['limit'], 1000)) : 200;
             $fechaInicio = $_GET['fecha_inicio'] ?? null;
             $fechaFin    = $_GET['fecha_fin'] ?? null;
+            $horaInicio  = $_GET['hora_inicio'] ?? null; 
+            $horaFin     = $_GET['hora_fin'] ?? null;    
             $sortOrder   = $_GET['sort'] ?? 'DESC';
 
-            $result = $controller->getLecturas($sensorId, $cuartoId, $limit, $fechaInicio, $fechaFin, $sortOrder);
+            $result = $controller->getLecturas($sensorId, $cuartoId, $limit, $fechaInicio, $fechaFin, $horaInicio, $horaFin, $sortOrder);
             echo json_encode($result);
             break;
 
@@ -165,18 +167,22 @@ try {
             break;
 
         case $req_path === '/lecturas/promedios' && $method === 'GET':
-            $result = $controller->getPromedios();
+            $cuartoId    = isset($_GET['cuarto_id']) ? (int)$_GET['cuarto_id'] : null;
+            $fechaInicio = $_GET['fecha_inicio'] ?? null;
+            $fechaFin    = $_GET['fecha_fin'] ?? null;
+            $horaInicio  = $_GET['hora_inicio'] ?? null;
+            $horaFin     = $_GET['hora_fin'] ?? null;
+
+            $result = $controller->getPromedios($fechaInicio, $fechaFin, $cuartoId, $horaInicio, $horaFin);
             echo json_encode($result);
             break;
 
-        /* ====== Últimas ====== */
         case $req_path === '/ultimas' && $method === 'GET':
             $by = $_GET['by'] ?? 'cuarto';
             $result = $controller->getUltimas($by);
             echo json_encode($result);
             break;
 
-        /* ====== Cuartos / Estadísticas ====== */
         case $req_path === '/cuartos' && $method === 'GET':
             $result = $controller->getCuartos();
             echo json_encode($result);
@@ -189,7 +195,6 @@ try {
             echo json_encode($result);
             break;
 
-        /* ====== Parámetros ====== */
         case $req_path === '/parametros' && $method === 'GET':
             $result = $paramController->getParametros();
             echo json_encode($result);
@@ -207,7 +212,6 @@ try {
             echo json_encode($result);
             break;
 
-        /* ====== Alertas (NUEVO) ====== */
         case $req_path === '/alertas/activas' && $method === 'GET':
             if (!$alertController) {
                 http_response_code(404);
@@ -218,7 +222,6 @@ try {
             echo json_encode($result);
             break;
 
-        /* ====== Default ====== */
         default:
             http_response_code(404);
             echo json_encode(['error' => 'Endpoint no encontrado: ' . $req_path]);

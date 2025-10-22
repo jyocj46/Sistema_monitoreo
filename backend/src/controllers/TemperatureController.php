@@ -10,27 +10,48 @@ class TemperatureController {
         $this->temperatureModel = new Temperature($pdo);
     }
 
-    public function getLecturas($sensorId = null, $cuartoId = null, $limit = 200, $fechaInicio = null, $fechaFin = null, $sortOrder = 'DESC') {
+    
+    public function getLecturas(
+        $sensorId = null,
+        $cuartoId = null,
+        $limit = 200,
+        $fechaInicio = null,
+        $fechaFin = null,
+        $horaInicio = null,
+        $horaFin = null,
+        $sortOrder = 'DESC'
+        ) {
         try {
-            $lecturas = $this->temperatureModel->getLecturas($sensorId, $cuartoId, $limit, $fechaInicio, $fechaFin, $sortOrder);
-            
+            $lecturas = $this->temperatureModel->getLecturas(
+                $sensorId,
+                $cuartoId,
+                $limit,
+                $fechaInicio,
+                $fechaFin,
+                $horaInicio,
+                $horaFin,
+                $sortOrder
+            );
+
             return [
                 'success' => true,
-                'data' => $lecturas,
-                'total' => count($lecturas),
+                'data'    => $lecturas,
+                'total'   => count($lecturas),
                 'filters' => [
-                    'sensor_id' => $sensorId,
-                    'cuarto_id' => $cuartoId,
-                    'limit' => $limit,
-                    'fecha_inicio' => $fechaInicio, 
-                    'fecha_fin' => $fechaFin,
-                    'sort_order' => $sortOrder       
+                    'sensor_id'    => $sensorId,
+                    'cuarto_id'    => $cuartoId,
+                    'limit'        => $limit,
+                    'fecha_inicio' => $fechaInicio,
+                    'fecha_fin'    => $fechaFin,
+                    'hora_inicio'  => $horaInicio,
+                    'hora_fin'     => $horaFin,
+                    'sort_order'   => $sortOrder
                 ]
             ];
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'error' => 'Error al obtener lecturas',
+                'error'   => 'Error al obtener lecturas',
                 'message' => $e->getMessage()
             ];
         }
@@ -177,21 +198,30 @@ class TemperatureController {
         $fechaInicio = $_GET['fecha_inicio'] ?? null;
         $fechaFin = $_GET['fecha_fin'] ?? null;
         $cuartoId = isset($_GET['cuarto_id']) ? (int)$_GET['cuarto_id'] : null;
+        $horaInicio = $_GET['hora_inicio'] ?? null;
+        $horaFin = $_GET['hora_fin'] ?? null;
 
-        // Validación básica
         if (!$fechaInicio || !$fechaFin) {
             http_response_code(400);
             return ['success' => false, 'error' => 'Los parámetros fecha_inicio y fecha_fin son requeridos'];
         }
 
         try {
-            $promedios = $this->temperatureModel->getPromediosDiarios($fechaInicio, $fechaFin, $cuartoId);
+            
+            $promedios = $this->temperatureModel->getPromediosDiarios(
+                $fechaInicio, 
+                $fechaFin, 
+                $cuartoId, 
+                $horaInicio, 
+                $horaFin
+            );
             return ['success' => true, 'data' => $promedios];
         } catch (Exception $e) {
             http_response_code(500);
             return ['success' => false, 'error' => 'Error al obtener promedios', 'message' => $e->getMessage()];
         }
     }
+
     public function getLecturasParaGrafica() {
         try {
             $lecturas = $this->temperatureModel->getLecturasParaGrafica();

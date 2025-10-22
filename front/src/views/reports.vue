@@ -1,145 +1,143 @@
 <!-- src/views/Reports.vue -->
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
-import TemperatureChart from '../components/TemperatureChart.vue';
-import ExportButtons from '../components/ExportButtons.vue';
-import '../assets/reports.css'; 
+    import { ref, onMounted, computed, watch } from 'vue';
+    import TemperatureChart from '../components/TemperatureChart.vue';
+    import ExportButtons from '../components/ExportButtons.vue';
+    import '../assets/reports.css'; 
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
 
 
-const fechaInicio = ref('');
-const fechaFin = ref('');
-const filtroCuartoId = ref(''); 
-const sortOrder = ref('DESC'); 
-const cuartos = ref([]); 
-const resultados = ref([]);
-const promediosData = ref(null); // Datos originales de la gráfica en Celsius
-const cargando = ref(false);
-const error = ref(null);
-const reporteGenerado = ref(false);
-const displayUnit = ref('F'); 
-const currentPage = ref(1);
-const itemsPerPage = 20;
-const pageInput = ref(1);
-const horaInicio = ref('');
-const horaFin = ref('');
+    const fechaInicio = ref('');
+    const fechaFin = ref('');
+    const filtroCuartoId = ref(''); 
+    const sortOrder = ref('DESC'); 
+    const cuartos = ref([]); 
+    const resultados = ref([]);
+    const promediosData = ref(null); // Datos originales de la gráfica en Celsius
+    const cargando = ref(false);
+    const error = ref(null);
+    const reporteGenerado = ref(false);
+    const displayUnit = ref('F'); 
+    const currentPage = ref(1);
+    const itemsPerPage = 20;
+    const pageInput = ref(1);
+    const horaInicio = ref('');
+    const horaFin = ref('');
 
-const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
+    const toFahrenheit = (celsius) => (celsius * 9 / 5) + 32;
 
-const chartDataConverted = computed(() => {
-  // Si no hay datos o la unidad es Celsius, devuelve los datos originales
-  if (!promediosData.value || displayUnit.value === 'C') {
-    return promediosData.value;
-  }
-  
-  // Si la unidad es Fahrenheit, crea una copia profunda y convierte los datos
-  const convertedData = JSON.parse(JSON.stringify(promediosData.value));
-  convertedData.datasets.forEach(dataset => {
-    dataset.data = dataset.data.map(tempC => {
-      if (tempC === null) return null;
-      return toFahrenheit(tempC);
+    const chartDataConverted = computed(() => {
+      // Si no hay datos o la unidad es Celsius, devuelve los datos originales
+      if (!promediosData.value || displayUnit.value === 'C') {
+        return promediosData.value;
+      }
+      
+      // Si la unidad es Fahrenheit, crea una copia profunda y convierte los datos
+      const convertedData = JSON.parse(JSON.stringify(promediosData.value));
+      convertedData.datasets.forEach(dataset => {
+        dataset.data = dataset.data.map(tempC => {
+          if (tempC === null) return null;
+          return toFahrenheit(tempC);
+        });
+      });
+      
+      return convertedData;
     });
-  });
-  
-  return convertedData;
-});
 
-const goToPage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page;
-  }
-};
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+      }
+    };
 
-const totalPages = computed(() => {
-  return Math.ceil(resultados.value.length / itemsPerPage);
-});
-
-const goToPageFromInput = () => {
-  goToPage(pageInput.value);
-};
-
-const paginatedResultados = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  return resultados.value.slice(start, end);
-});
-
-watch(currentPage, (newPage) => {
-  pageInput.value = newPage;
-});
-
-const exportData = computed(() => {
-  if (!resultados.value.length) return [];
-
-  return resultados.value.map(l => ({
-    'Fecha y Hora': new Date(l.tomado_en_utc).toLocaleString(),
-    'Cuarto/Sensor': l.cuarto_nombre || `Sensor ${l.sensor_id}`,
-
-    [`Temperatura (°${displayUnit.value})`]: displayTemp(l.temperatura_c),
-    'Humedad (%)': l.humedad_pct.toFixed(2)
-  }));
-});
-
-const displayTemp = (celsius) => {
-  if (celsius === undefined || celsius === null) return '--';
-  return (displayUnit.value === 'F' ? toFahrenheit(celsius) : celsius).toFixed(2);
-};
-
-const cargarCuartos = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/cuartos`);
-    const data = await response.json();
-    if (data.success) {
-      cuartos.value = data.data;
-    }
-  } catch (e) {
-    console.error("Error al cargar la lista de cuartos:", e);
-  }
-};
-
-onMounted(() => {
-  cargarCuartos();
-});
-
-
-const toggleSortOrder = () => {
-  sortOrder.value = sortOrder.value === 'DESC' ? 'ASC' : 'DESC';
-  if (resultados.value.length > 0) {
-    generarReporte();
-  }
-};
-
-const formatChartData = (promedios) => {
-  
-  if (!promedios || promedios.length === 0) return null;
-
-  const labels = [...new Set(promedios.map(p => p.fecha))].sort();
-  const datasets = [];
-  const cuartosEnData = [...new Set(promedios.map(p => p.cuarto_id))];
-
-  // Paleta de colores para las líneas de la gráfica
-  const colors = ['#6ac17b', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
-
-  cuartosEnData.forEach((cuartoId, index) => {
-    const datosDelCuarto = promedios.filter(p => p.cuarto_id === cuartoId);
-    datasets.push({
-      label: datosDelCuarto[0].cuarto_nombre,
-      data: labels.map(label => {
-        const datoParaFecha = datosDelCuarto.find(p => p.fecha === label);
-        return datoParaFecha ? datoParaFecha.temp_promedio : null;
-      }),
-      borderColor: colors[index % colors.length],
-      backgroundColor: colors[index % colors.length],
-      tension: 0.1,
+    const totalPages = computed(() => {
+      return Math.ceil(resultados.value.length / itemsPerPage);
     });
-  });
 
-  return { labels, datasets };
-};
+    const goToPageFromInput = () => {
+      goToPage(pageInput.value);
+    };
 
-const generarReporte = async () => {
+    const paginatedResultados = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage;
+      const end = start + itemsPerPage;
+      return resultados.value.slice(start, end);
+    });
+
+    watch(currentPage, (newPage) => {
+      pageInput.value = newPage;
+    });
+
+    const exportData = computed(() => {
+      if (!resultados.value.length) return [];
+
+      return resultados.value.map(l => ({
+        'Fecha y Hora': new Date((l.ingresado_local ?? l.ingresado_en)).toLocaleString(),
+        'Cuarto/Sensor': l.cuarto_nombre || `Sensor ${l.sensor_id}`,
+
+        [`Temperatura (°${displayUnit.value})`]: displayTemp(l.temperatura_c),
+        'Humedad (%)': l.humedad_pct.toFixed(2)
+      }));
+    });
+
+    const displayTemp = (celsius) => {
+      if (celsius === undefined || celsius === null) return '--';
+      return (displayUnit.value === 'F' ? toFahrenheit(celsius) : celsius).toFixed(2);
+    };
+
+    const cargarCuartos = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/cuartos`);
+        const data = await response.json();
+        if (data.success) {
+          cuartos.value = data.data;
+        }
+      } catch (e) {
+        console.error("Error al cargar la lista de cuartos:", e);
+      }
+    };
+
+    onMounted(() => {
+      cargarCuartos();
+    });
+
+
+    const toggleSortOrder = () => {
+      sortOrder.value = sortOrder.value === 'DESC' ? 'ASC' : 'DESC';
+      generarReporte(); 
+    };
+
+    const formatChartData = (promedios) => {
+      
+      if (!promedios || promedios.length === 0) return null;
+
+      const labels = [...new Set(promedios.map(p => p.fecha))].sort();
+      const datasets = [];
+      const cuartosEnData = [...new Set(promedios.map(p => p.cuarto_id))];
+
+      // Paleta de colores para las líneas de la gráfica
+      const colors = ['#6ac17b', '#3b82f6', '#ef4444', '#f97316', '#8b5cf6'];
+
+      cuartosEnData.forEach((cuartoId, index) => {
+        const datosDelCuarto = promedios.filter(p => p.cuarto_id === cuartoId);
+        datasets.push({
+          label: datosDelCuarto[0].cuarto_nombre,
+          data: labels.map(label => {
+            const datoParaFecha = datosDelCuarto.find(p => p.fecha === label);
+            return datoParaFecha ? datoParaFecha.temp_promedio : null;
+          }),
+          borderColor: colors[index % colors.length],
+          backgroundColor: colors[index % colors.length],
+          tension: 0.1,
+        });
+      });
+
+      return { labels, datasets };
+    };
+
+    const generarReporte = async () => {
 
     if (!fechaInicio.value || !fechaFin.value) {
       error.value = 'Por favor, selecciona ambas fechas.';
@@ -214,6 +212,25 @@ const prevPage = () => {
   }
 };
 
+const limpiarFiltros = () => {
+  fechaInicio.value = '';
+  fechaFin.value = '';
+  horaInicio.value = '';
+  horaFin.value = '';
+  filtroCuartoId.value = '';
+
+  sortOrder.value = 'DESC';
+  displayUnit.value = 'F'; // pon 'C' si prefieres Celsius por defecto
+
+  resultados.value = [];
+  promediosData.value = null;
+  error.value = null;
+  reporteGenerado.value = false;
+
+  currentPage.value = 1;
+  pageInput.value = 1;
+};
+
 </script>
 
 
@@ -263,21 +280,25 @@ const prevPage = () => {
             </div>
 
             <div class="col-12">
-              <div class="generate-btn-container">
+              <div class="generate-btn-container d-flex gap-2 justify-content-end">
                 <button @click="generarReporte" :disabled="cargando" class="generate-btn">
                   {{ cargando ? 'Generando...' : 'Generar Reporte' }}
                 </button>
+                <button @click="limpiarFiltros" :disabled="cargando" class="btn btn-outline-secondary">
+                  Limpiar filtros
+                </button>
               </div>
             </div>
+            
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Error -->
+    
     <div v-if="error" class="alert alert-danger text-center">{{ error }}</div>
 
-    <!-- Gráfica -->
+    
     <div v-if="reporteGenerado && !cargando" class="chart-section">
       <div class="unit-toggle">
         <button :class="['btn btn-sm', displayUnit === 'C' ? 'btn-primary' : 'btn-outline-primary']"
@@ -293,7 +314,7 @@ const prevPage = () => {
       </div>
     </div>
 
-    <!-- Resultados -->
+    
     <div v-if="resultados.length > 0" class="results-section">
       <div class="results-header d-flex flex-wrap justify-content-between align-items-center">
         <h3 class="h5 mb-0">Resultados del Reporte</h3>
@@ -319,7 +340,7 @@ const prevPage = () => {
           </thead>
           <tbody>
             <tr v-for="lectura in paginatedResultados" :key="lectura.id">
-              <td>{{ new Date(lectura.tomado_en_utc).toLocaleString() }}</td>
+              <td>{{ new Date(lectura.ingresado_local ?? lectura.ingresado_en).toLocaleString() }}</td>
               <td>{{ lectura.cuarto_nombre || `Sensor ${lectura.sensor_id}` }}</td>
               <td class="fw-semibold">{{ displayTemp(lectura.temperatura_c) }}</td>
               <td>{{ lectura.humedad_pct.toFixed(2) }}</td>

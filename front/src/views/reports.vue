@@ -271,7 +271,7 @@ const limpiarFiltros = () => {
 
             <div class="col-12 col-sm-6 col-md-4 form-group">
               <label for="filtroCuarto" class="form-label">Filtrar por Cuarto</label>
-              <select id="filtroCuarto" v-model="filtroCuartoId" class="form-control">
+              <select id="filtroCuarto" v-model="filtroCuartoId" class="form-select">
                 <option value="">-- Todos los cuartos --</option>
                 <option v-for="cuarto in cuartos" :key="cuarto.id" :value="cuarto.id">
                   {{ cuarto.nombre }} ({{ cuarto.codigo }})

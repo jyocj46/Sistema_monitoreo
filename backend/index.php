@@ -13,9 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-/* ===========================
-   1) Cargar db.php (búsqueda flexible)
-   =========================== */
 $possible_paths = [
     __DIR__ . '/../src/config/db.php',
     __DIR__ . '/../../src/config/db.php',
@@ -40,9 +37,6 @@ if (!$db_loaded) {
     exit;
 }
 
-/* ===========================
-   2) Cargar TemperatureController
-   =========================== */
 $controller_path_guess = $db_path
     ? str_replace('config/db.php', 'controllers/TemperatureController.php', $db_path)
     : null;
@@ -69,9 +63,6 @@ if (!$controller_loaded) {
     exit;
 }
 
-/* ===========================
-   3) Cargar ParameterController
-   =========================== */
 $param_controller_guess = $db_path
     ? str_replace('config/db.php', 'controllers/ParameterController.php', $db_path)
     : null;
@@ -98,9 +89,6 @@ if (!$param_loaded) {
     exit;
 }
 
-/* ===========================
-   3.5) Cargar AlertController (NUEVO)
-   =========================== */
 $alert_controller_guess = $db_path
     ? str_replace('config/db.php', 'controllers/AlertController.php', $db_path)
     : null;
@@ -122,20 +110,44 @@ foreach ($alert_controller_paths as $actrl) {
     }
 }
 
+// ... (después del bloque de $debug_loaded) ...
+
+$dest_controller_guess = $db_path
+    ? str_replace('config/db.php', 'controllers/DestinatarioController.php', $db_path)
+    : null;
+
+$dest_controller_paths = array_values(array_unique(array_filter([
+    $dest_controller_guess,
+    __DIR__ . '/../src/controllers/DestinatarioController.php',
+    __DIR__ . '/../../src/controllers/DestinatarioController.php',
+    __DIR__ . '/src/controllers/DestinatarioController.php',
+    '/home1/detponco/src/controllers/DestinatarioController.php'
+])));
+
+$dest_loaded = false;
+    foreach ($dest_controller_paths as $dctrl) {
+        if ($dctrl && file_exists($dctrl)) {
+            require_once $dctrl;
+            $dest_loaded = true;
+            break;
+        }
+    }
+
 try {
     $req_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $req_path = str_replace('/api', '', $req_path);
     $req_path = $req_path ?: '/';
     $method   = $_SERVER['REQUEST_METHOD'];
 
-    // Instancias de controladores (pdo viene de db.php)
+    
     $controller      = new TemperatureController($pdo);
     $paramController = new ParameterController($pdo);
     $alertController = $alert_loaded ? new AlertController($pdo) : null;
+    $destController = $dest_loaded ? new DestinatarioController($pdo) : null;
 
     switch (true) {
 
-        /* ====== Lecturas ====== */
+        
         case $req_path === '/lecturas' && $method === 'GET':
             $sensorId    = isset($_GET['sensor_id']) ? (int)$_GET['sensor_id'] : null;
             $cuartoId    = isset($_GET['cuarto_id']) ? (int)$_GET['cuarto_id'] : null;
@@ -220,6 +232,23 @@ try {
             }
             $result = $alertController->getActivas();
             echo json_encode($result);
+            break;
+
+        case $req_path === '/destinatarios' && $method === 'GET':
+            if (!$destController) { http_response_code(404); break; }
+            echo json_encode($destController->getAll());
+            break;
+
+        case $req_path === '/destinatarios' && $method === 'POST':
+            if (!$destController) { http_response_code(404); break; }
+            $input = json_decode(file_get_contents('php://input'), true);
+            echo json_encode($destController->create($input));
+            break;
+
+        case preg_match('/^\/destinatarios\/(\d+)$/', $req_path, $matches) && $method === 'DELETE':
+            if (!$destController) { http_response_code(404); break; }
+            $id = (int)$matches[1];
+            echo json_encode($destController->delete($id));
             break;
 
         default:

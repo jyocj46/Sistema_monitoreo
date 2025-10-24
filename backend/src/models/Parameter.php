@@ -25,9 +25,7 @@ class Parameter {
             $stmt = $this->pdo->query($sql);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
-
-
-        // Actualiza o inserta un parámetro para un cuarto específico
+        
         public function actualizarParametro(int $cuartoId, array $data): bool {
             $sql = "INSERT INTO parametro_cuarto (cuarto_id, temp_min_c, temp_max_c, hum_min_pct, hum_max_pct)
                     VALUES (:cuarto_id, :temp_min_c, :temp_max_c, :hum_min_pct, :hum_max_pct)

@@ -9,10 +9,8 @@
         <router-link to="/reports">Reportes</router-link>
         <router-link to="/parametros">Parámetros</router-link> 
         <a>Historial</a>
-        <a>Aplicación de Productos</a>
-        <a>Cultivos</a>
         <a>Productos</a>
-        <a>Administración</a>
+        <router-link to="/ajustes">Ajustes</router-link> 
       </nav>
     </aside>
 

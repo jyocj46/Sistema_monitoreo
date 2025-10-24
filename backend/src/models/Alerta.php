@@ -1,6 +1,8 @@
 <?php
 // /src/models/Alerta.php
 
+require_once __DIR__ . '/../helpers/phpmailer/MailHelper.php';
+
 class Alerta {
     private $pdo;
 
@@ -8,21 +10,21 @@ class Alerta {
         $this->pdo = $pdo;
     }
 
-    // Función principal para verificar y gestionar alertas
+    
     public function verificarYGestionarAlertas(array $lectura) {
-        // 1. Obtener los parámetros para el cuarto de la lectura
+       
         $params = $this->getParametrosPorCuarto($lectura['cuarto_id']);
         if (!$params || !$params['habilitado']) {
-            return; // No hacer nada si no hay parámetros o están deshabilitados
+            return; 
         }
 
-        // 2. Verificar la temperatura
+        
         $this->evaluarVariable(
             $lectura, $params, 'TEMPERATURA', 
             $lectura['temperatura_c'], $params['temp_min_c'], $params['temp_max_c']
         );
 
-        // 3. Verificar la humedad
+        
         $this->evaluarVariable(
             $lectura, $params, 'HUMEDAD',
             $lectura['humedad_pct'], $params['hum_min_pct'], $params['hum_max_pct']
@@ -34,16 +36,16 @@ class Alerta {
         $fueraDeRango = ($valorMedido < $min) || ($valorMedido > $max);
 
         if ($fueraDeRango && !$alertaAbierta) {
-            // Caso 1: Valor fuera de rango y no hay alerta abierta -> CREAR ALERTA
-            $this->crearAlerta($lectura, $variable, $valorMedido, $min, $max);
+            
+            $this->crearAlerta($lectura, $variable, $valorMedido, $min, $max, $params['cuarto_nombre']);
         } elseif (!$fueraDeRango && $alertaAbierta) {
-            // Caso 2: Valor dentro de rango y SÍ hay alerta abierta -> CERRAR ALERTA
+            
             $this->cerrarAlerta($alertaAbierta['id']);
         }
     }
 
     private function getParametrosPorCuarto(int $cuartoId) {
-        $stmt = $this->pdo->prepare("SELECT * FROM parametro_cuarto WHERE cuarto_id = :cuarto_id");
+        $stmt = $this->pdo->prepare("SELECT pc.*, c.nombre AS cuarto_nombre FROM parametro_cuarto pc JOIN cuarto c ON pc.cuarto_id = c.id WHERE pc.cuarto_id = :cuarto_id");
         $stmt->execute([':cuarto_id' => $cuartoId]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -54,7 +56,7 @@ class Alerta {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    private function crearAlerta($lectura, $variable, $valorMedido, $min, $max) {
+    private function crearAlerta($lectura, $variable, $valorMedido, $min, $max, $cuartoNombre) {
         $sql = "INSERT INTO alerta (cuarto_id, sensor_id, prioridad, variable, valor_medido, umbral_min, umbral_max, estado, abierta_en_utc)
                 VALUES (:cuarto_id, :sensor_id, :prioridad, :variable, :valor_medido, :umbral_min, :umbral_max, 'ABIERTA', UTC_TIMESTAMP())";
         $stmt = $this->pdo->prepare($sql);
@@ -67,6 +69,19 @@ class Alerta {
             ':umbral_min'   => $min,
             ':umbral_max'   => $max
         ]);
+
+        $detallesParaEmail = [
+            'cuarto_nombre' => $cuartoNombre,
+            'variable'      => $variable,
+            'valor_medido'  => $valorMedido,
+            'rango_esperado' => "$min - $max"
+        ];
+
+        try {
+            MailHelper::enviarCorreoDeAlerta($detallesParaEmail, $this->pdo);
+        } catch (Exception $e) {
+            error_log("Falló el envío de email en Alerta.php: " . $e->getMessage());
+        }
     }
 
     private function cerrarAlerta(int $alertaId) {
@@ -75,7 +90,6 @@ class Alerta {
         $stmt->execute([':id' => $alertaId]);
     }
     
-    // Función para el frontend: obtener todas las alertas activas
     public function getAlertasActivas(): array {
         $sql = "SELECT a.*, c.nombre AS cuarto_nombre 
                 FROM alerta a 

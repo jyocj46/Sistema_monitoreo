@@ -46,7 +46,6 @@ class Temperature {
         if ($fechaInicio !== null) {
             $fechaHoraInicio = $fechaInicio . ' ' . ($horaInicio ?? '00:00:00');
             
-            // Ajustar fecha de inicio restando 1 hora
             $stmtTmp = $this->pdo->prepare("SELECT DATE_SUB(:fh, INTERVAL 1 HOUR)");
             $stmtTmp->execute([':fh' => $fechaHoraInicio]);
             $ajusteInicio = $stmtTmp->fetchColumn();
@@ -58,7 +57,6 @@ class Temperature {
         if ($fechaFin !== null) {
             $fechaHoraFin = $fechaFin . ' ' . ($horaFin ?? '23:59:59');
 
-            // Ajustar fecha de fin restando 1 hora
             $stmtTmp = $this->pdo->prepare("SELECT DATE_SUB(:fh, INTERVAL 1 HOUR)");
             $stmtTmp->execute([':fh' => $fechaHoraFin]);
             $ajusteFin = $stmtTmp->fetchColumn();
@@ -125,13 +123,7 @@ class Temperature {
     }
 
     
-    public function insertarLectura(
-        int $cuartoId,
-        int $sensorId,
-        ?float $temperatura,
-        ?float $humedad,
-        string $origen = 'HTTP',
-        ?string $tomadoEnUtc = null
+    public function insertarLectura(int $cuartoId,int $sensorId,?float $temperatura,?float $humedad,string $origen = 'HTTP',?string $tomadoEnUtc = null
         ): bool {
             
             $sql = "INSERT INTO lectura
@@ -166,14 +158,18 @@ class Temperature {
 
             $success = $stmt->execute();
 
-            if ($success) {
-            $this->alertaModel->verificarYGestionarAlertas([
-                'cuarto_id'     => $cuartoId,
-                'sensor_id'     => $sensorId,
-                'temperatura_c' => $temperatura,
-                'humedad_pct'   => $humedad
-            ]);
-        }
+        if ($success) {                
+                try {
+                    $this->alertaModel->verificarYGestionarAlertas([
+                        'cuarto_id'     => $cuartoId,
+                        'sensor_id'     => $sensorId,
+                        'temperatura_c' => $temperatura,
+                        'humedad_pct'   => $humedad
+                    ]);
+                } catch (Exception $e) {
+                    error_log("Fallo al verificar alertas: " . $e->getMessage());
+                }
+            }
             return $success;
     }
 

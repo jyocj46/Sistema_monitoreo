@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Dashboard from '../views/dashboard.vue'
 import Reports from '../views/reports.vue' 
 import Parameters from '../views/Parameters.vue'; 
+import Ajustes from '../views/Ajustes.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,7 +22,13 @@ const router = createRouter({
     path: '/parametros',
     name: 'Parameters',
     component: Parameters
-    }
+    },
+
+    { 
+    path: '/ajustes',
+    name: 'Ajustes',
+    component: Ajustes
+  }
 
   ],
   linkActiveClass: 'active'

@@ -280,14 +280,14 @@ const limpiarFiltros = () => {
             </div>
 
             <div class="col-12">
-              <div class="generate-btn-container d-flex gap-2 justify-content-end">
-                <button @click="generarReporte" :disabled="cargando" class="generate-btn">
-                  {{ cargando ? 'Generando...' : 'Generar Reporte' }}
-                </button>
-                <button @click="limpiarFiltros" :disabled="cargando" class="btn btn-outline-secondary">
-                  Limpiar filtros
-                </button>
-              </div>
+<div class="generate-btn-container d-flex gap-2 justify-content-end">
+  <button @click="generarReporte" :disabled="cargando" class="btn btn-primary">
+    {{ cargando ? 'Generando...' : 'Generar Reporte' }}
+  </button>
+  <button @click="limpiarFiltros" :disabled="cargando" class="btn btn-outline-secondary">
+    Limpiar filtros
+  </button>
+</div>
             </div>
             
           </div>
@@ -301,10 +301,8 @@ const limpiarFiltros = () => {
     
     <div v-if="reporteGenerado && !cargando" class="chart-section">
       <div class="unit-toggle">
-        <button :class="['btn btn-sm', displayUnit === 'C' ? 'btn-primary' : 'btn-outline-primary']"
-                @click="displayUnit = 'C'">°C</button>
-        <button :class="['btn btn-sm', displayUnit === 'F' ? 'btn-primary' : 'btn-outline-secondary']"
-                @click="displayUnit = 'F'">°F</button>
+        <button :class="{ active: displayUnit === 'C' }" @click="displayUnit = 'C'">°C</button>
+        <button :class="{ active: displayUnit === 'F' }" @click="displayUnit = 'F'">°F</button>
       </div>
 
       <div class="chart-responsive">
@@ -351,10 +349,10 @@ const limpiarFiltros = () => {
 
       <!-- Paginación -->
       <div v-if="totalPages > 1" class="pagination-controls">
-        <button @click="goToPage(1)" :disabled="currentPage === 1" class="btn btn-outline-secondary btn-sm">
+        <button @click="goToPage(1)" :disabled="currentPage === 1" class="btn btn-outline-secondary">
           &laquo;&laquo;
         </button>
-        <button @click="prevPage" :disabled="currentPage === 1" class="btn btn-outline-secondary btn-sm">
+        <button @click="prevPage" :disabled="currentPage === 1" class="btn btn-outline-secondary">
           Anterior
         </button>
 
@@ -365,10 +363,10 @@ const limpiarFiltros = () => {
           <span>de {{ totalPages }}</span>
         </span>
 
-        <button @click="nextPage" :disabled="currentPage === totalPages" class="btn btn-outline-secondary btn-sm">
+        <button @click="nextPage" :disabled="currentPage === totalPages" class="btn btn-outline-secondary">
           Siguiente
         </button>
-        <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="btn btn-outline-secondary btn-sm">
+        <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="btn btn-outline-secondary">
           &raquo;&raquo;
         </button>
       </div>

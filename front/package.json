@@ -14,7 +14,6 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "apexcharts": "^5.3.5",
     "axios": "^1.12.2",
     "boostrap": "^2.0.0",

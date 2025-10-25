@@ -6,7 +6,7 @@
         <div class="text-center mb-5">
           <h1 class="h1 fw-bold text-primary mb-3">Configuración del Sistema</h1>
           <p class="lead text-muted mb-0">
-            Gestiona todas las configuraciones desde un solo lugar
+            Gestión de configuraciones generales
           </p>
           <div class="border-bottom mx-auto mt-4" style="max-width: 200px;"></div>
         </div>
@@ -60,7 +60,7 @@
                               class="form-control form-control-lg"
                               v-model="newEmail.nombre" 
                               required
-                              placeholder="Ingresa el nombre completo"
+                              placeholder="Ingresa el nombre"
                             >
                           </div>
                           

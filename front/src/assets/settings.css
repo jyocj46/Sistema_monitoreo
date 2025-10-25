@@ -47,7 +47,10 @@
   font-size: 1rem;
 }
 
-/* Estilos para la lista */
+.settings-page .h1 {
+  color: rgb(85, 155, 38) !important;
+}
+
 .list-group-item {
   transition: background-color 0.2s ease;
   border-color: #f8f9fa;
@@ -57,12 +60,12 @@
   background-color: #f8f9fa;
 }
 
-/* Badge personalizado */
+
 .badge {
   font-size: 0.7em;
 }
 
-/* Estados de carga */
+
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
@@ -81,7 +84,7 @@
   border-color: rgb(85, 155, 38) !important;
 }
 
-/* Headers de card normales */
+
 .settings-page .card-header {
   padding: 1rem 1.5rem !important;
 }
@@ -90,7 +93,7 @@
   padding: 1.5rem !important;
 }
 
-/* Botón eliminar con icono */
+
 .btn-outline-danger {
   border: 1px solid #dc3545;
   color: #dc3545;
@@ -101,7 +104,7 @@
   color: white;
 }
 
-/* Responsive */
+
 @media (max-width: 768px) {
   .settings-page {
     padding: 1rem !important;
@@ -132,14 +135,14 @@
     font-size: 1rem;
   }
   
-  /* Botón eliminar en móvil más compacto */
+  
   .btn-sm {
     width: 100%;
     margin-top: 0.5rem;
   }
 }
 
-/* Validación de formularios */
+
 .was-validated .form-control:invalid,
 .form-control.is-invalid {
   border-color: #dc3545;
@@ -156,4 +159,48 @@
   background-repeat: no-repeat;
   background-position: right calc(0.375em + 0.1875rem) center;
   background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+/* Estilos personalizados para el acordeón */
+.custom-accordion-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 1.1rem;
+}
+
+.custom-accordion-header:not(.collapsed) {
+  background: linear-gradient(135deg, rgb(85, 155, 38) 0%, rgb(70, 135, 30) 100%) !important;
+  color: white !important;
+}
+
+.custom-accordion-header:not(.collapsed) .text-muted {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.custom-accordion-header:focus {
+  box-shadow: 0 0 0 0.2rem rgba(85, 155, 38, 0.25) !important;
+  border-color: rgb(85, 155, 38) !important;
+}
+
+.accordion-button::after {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23559b26'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+.accordion-button:not(.collapsed)::after {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+.accordion-body {
+  background-color: #fafafa;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Cambiar color de la flecha del acordeón */
+.accordion-button::after {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23559b26'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+.accordion-button:not(.collapsed)::after {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
 }

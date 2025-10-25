@@ -1,65 +1,159 @@
-/* assets/settings.css */
-.settings-page h2 {
-  border-bottom: 2px solid #eee;
-  padding-bottom: 10px;
-}
-.settings-container {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 2rem;
-  margin-top: 1.5rem;
-}
-.form-card, .list-card {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  padding: 1.5rem;
-}
-.form-group {
-  margin-bottom: 1rem;
-}
-.form-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-.form-group input {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-.list-card ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-.list-card li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-}
-.list-card li:last-child {
-  border-bottom: none;
-}
-.btn-danger {
-  background-color: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-.btn-danger:hover {
-  background-color: #c0392b;
+/* assets/settings.css - Estilos complementarios para Bootstrap */
+
+.settings-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
+/* Mejoras para las tarjetas */
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Estilos para los botones */
+.btn {
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0a58ca 0%, #084298 100%);
+  transform: translateY(-1px);
+}
+
+/* Mejoras en los inputs */
+.form-control {
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.form-control-lg {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+/* Estilos para la lista */
+.list-group-item {
+  transition: background-color 0.2s ease;
+  border-color: #f8f9fa;
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* Badge personalizado */
+.badge {
+  font-size: 0.7em;
+}
+
+/* Estados de carga */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.settings-card-body {
+  padding: 1.5rem !important;
+}
+
+.settings-page h2 {
+  color: rgb(85, 155, 38) !important;
+}
+
+.custom-green-bg {
+  background-color: rgb(85, 155, 38) !important;
+  border-color: rgb(85, 155, 38) !important;
+}
+
+/* Headers de card normales */
+.settings-page .card-header {
+  padding: 1rem 1.5rem !important;
+}
+
+.settings-page .card-body {
+  padding: 1.5rem !important;
+}
+
+/* Botón eliminar con icono */
+.btn-outline-danger {
+  border: 1px solid #dc3545;
+  color: #dc3545;
+}
+
+.btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .settings-container {
-    grid-template-columns: 1fr;
+  .settings-page {
+    padding: 1rem !important;
   }
+  
+  .settings-card-body {
+    padding: 1rem !important;
+  }
+  
+  .h1 {
+    font-size: 1.75rem;
+  }
+  
+  .lead {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .list-group-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+  
+  .btn-lg {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+  
+  /* Botón eliminar en móvil más compacto */
+  .btn-sm {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Validación de formularios */
+.was-validated .form-control:invalid,
+.form-control.is-invalid {
+  border-color: #dc3545;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6.4.4.4-.4'/%3e%3cpath d='M6 7v1'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+}
+
+.was-validated .form-control:valid,
+.form-control.is-valid {
+  border-color: #198754;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }

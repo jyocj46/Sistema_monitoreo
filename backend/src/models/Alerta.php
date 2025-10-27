@@ -2,6 +2,7 @@
 // /src/models/Alerta.php
 
 require_once __DIR__ . '/../helpers/phpmailer/MailHelper.php';
+require_once __DIR__ . '/../helpers/phpmailer/WhatsappHelper.php';
 
 class Alerta {
     private $pdo;
@@ -80,7 +81,12 @@ class Alerta {
         try {
             MailHelper::enviarCorreoDeAlerta($detallesParaEmail, $this->pdo);
         } catch (Exception $e) {
-            error_log("Falló el envío de email en Alerta.php: " . $e->getMessage());
+            error_log("Falló el envío de email: " . $e->getMessage());
+        }
+        try {
+            WhatsAppHelper::enviarMensajeAlerta($detallesParaEmail, $this->pdo);
+        } catch (Exception $e) {
+            error_log("Falló WhatsApp: " . $e->getMessage());
         }
     }
 

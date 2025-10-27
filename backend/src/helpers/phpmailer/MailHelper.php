@@ -19,8 +19,7 @@ class MailHelper {
         $mail = new PHPMailer(true);
 
         try {
-            // --- 1. Configuración del Servidor (Tu Host) ---
-            // $mail->SMTPDebug = SMTP::DEBUG_SERVER; // Descomenta SOLO si falla para depurar
+
             $mail->isSMTP();
             $mail->Host       = HOST_SMTP;
             $mail->SMTPAuth   = true;
@@ -39,7 +38,7 @@ class MailHelper {
             $mail->setFrom(REMITENTE_EMAIL, REMITENTE_NOMBRE);
 
             
-            $stmt = $pdo->prepare("SELECT email FROM alerta_destinatarios WHERE habilitado = 1");
+            $stmt = $pdo->prepare("SELECT valor FROM alerta_destinatarios WHERE habilitado = 1 AND tipo = 'EMAIL'");
             $stmt->execute();
             $destinatarios = $stmt->fetchAll(PDO::FETCH_COLUMN);
 

@@ -110,8 +110,6 @@ foreach ($alert_controller_paths as $actrl) {
     }
 }
 
-// ... (después del bloque de $debug_loaded) ...
-
 $dest_controller_guess = $db_path
     ? str_replace('config/db.php', 'controllers/DestinatarioController.php', $db_path)
     : null;

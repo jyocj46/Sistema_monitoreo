@@ -17,15 +17,17 @@ class DestinatarioController {
 
     // POST /api/destinatarios
     public function create($input) {
-        $email = $input['email'] ?? null;
+        
         $nombre = $input['nombre'] ?? null;
+        $tipo = $input['tipo'] ?? null;
+        $valor = $input['valor'] ?? null;
 
-        if (!$email || !$nombre) {
+        if (!$nombre || !$tipo || !$valor) {
             http_response_code(400);
-            return ['success' => false, 'error' => 'Email y nombre son requeridos'];
+            return ['success' => false, 'error' => 'Nombre, Tipo y Valor son requeridos'];
         }
 
-        $success = $this->model->addDestinatario($email, $nombre);
+        $success = $this->model->addDestinatario($nombre, $tipo, $valor);
         return ['success' => $success];
     }
 

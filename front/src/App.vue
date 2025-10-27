@@ -23,7 +23,7 @@
           </button>
 
           <div class="crumbs">
-            <span>Monitoreo en tiempo real</span>
+            <span>Sistema de monitoreo</span>
           </div>
         </div>
 

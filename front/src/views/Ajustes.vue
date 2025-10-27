@@ -26,8 +26,8 @@
                 aria-controls="collapseCorreos"
               >
                 <i class="bi bi-envelope-check me-3 fs-5"></i>
-                <span class="fw-bold">Gestión de Correos de Alerta</span>
-                <small class="text-muted ms-2">({{ destinatarios.length }} configurados)</small>
+                <span class="fw-bold">Gestión de Contactos (Email y WhatsApp)</span>
+                <small class="text-muted ms-2">({{ contactos.length }} configurados)</small>
               </button>
             </h2>
             <div 
@@ -49,7 +49,7 @@
                         </h3>
                       </div>
                       <div class="settings-card-body p-4">
-                        <form @submit.prevent="addEmail" class="needs-validation" novalidate>
+                        <form @submit.prevent="addContacto" class="needs-validation" novalidate>
                           <div class="mb-3">
                             <label for="nombre" class="form-label fw-semibold">
                               Nombre <span class="text-danger">*</span>
@@ -58,24 +58,34 @@
                               type="text" 
                               id="nombre" 
                               class="form-control form-control-lg"
-                              v-model="newEmail.nombre" 
+                              v-model="newContacto.nombre" 
                               required
                               placeholder="Ingresa el nombre"
                             >
                           </div>
                           
-                          <div class="mb-4">
-                            <label for="email" class="form-label fw-semibold">
-                              Correo Electrónico <span class="text-danger">*</span>
+                          <div class="mb-3">
+                            <label for="tipo" class="form-label fw-semibold">
+                              Tipo <span class="text-danger">*</span>
                             </label>
-                            <input 
-                              type="email" 
-                              id="email" 
-                              class="form-control form-control-lg"
-                              v-model="newEmail.email" 
-                              required
-                              placeholder="ejemplo@correo.com"
-                            >
+                            <select id="tipo" class="form-select form-select-lg" v-model="newContacto.tipo">
+                              <option value="EMAIL">Email</option>
+                              <option value="WHATSAPP">WhatsApp</option>
+                            </select>
+                          </div>
+
+                          <div class="mb-4">
+                            <label for="valor" class="form-label fw-semibold">
+                              Contacto (Email o Número) <span class="text-danger">*</span>
+                            </label>
+                              <input 
+                                type="text" 
+                                id="valor" 
+                                class="form-control form-control-lg"
+                                v-model="newContacto.valor" 
+                                required
+                                :placeholder="newContacto.tipo === 'WHATSAPP' ? '+50212345678' : 'ejemplo@correo.com'"
+                              >
                           </div>
                           
                           <button 
@@ -84,7 +94,7 @@
                             :disabled="loading"
                           >
                             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                            {{ loading ? 'Guardando...' : 'Añadir Correo' }}
+                            {{ loading ? 'Guardando...' : 'Añadir Contacto' }}
                           </button>
                         </form>
                       </div>
@@ -97,14 +107,14 @@
                       <div class="card-header py-3 custom-green-bg text-white">
                         <h3 class="h5 mb-0">
                           <i class="bi bi-list-ul me-2"></i>
-                          Correos Actuales
-                          <span class="badge bg-light text-dark ms-2">{{ destinatarios.length }}</span>
+                          Contactos Actuales
+                          <span class="badge bg-light text-dark ms-2">{{ contactos.length }}</span>
                         </h3>
                       </div>
                       <div class="settings-card-body p-0">
-                        <div v-if="destinatarios.length > 0" class="list-group list-group-flush">
+                        <div v-if="contactos.length > 0" class="list-group list-group-flush">
                           <div 
-                            v-for="dest in destinatarios" 
+                            v-for="dest in contactos" 
                             :key="dest.id"
                             class="list-group-item d-flex justify-content-between align-items-center py-3 px-4"
                           >
@@ -115,11 +125,14 @@
                               </div>
                               <div>
                                 <strong class="d-block text-dark">{{ dest.nombre }}</strong>
-                                <small class="text-muted">{{ dest.email }}</small>
+                                  <small class="text-muted">
+                                    <i :class="dest.tipo === 'EMAIL' ? 'bi bi-envelope' : 'bi bi-whatsapp'"></i>
+                                    {{ dest.valor }}
+                                  </small>
                               </div>
                             </div>
                             <button 
-                              @click="deleteEmail(dest.id)" 
+                              @click="deleteContacto(dest.id)" 
                               class="btn btn-outline-danger btn-sm"
                               :disabled="loading"
                               title="Eliminar correo"
@@ -134,8 +147,8 @@
                         
                         <div v-else class="text-center py-5">
                           <i class="bi bi-inbox display-4 text-muted mb-3"></i>
-                          <p class="text-muted mb-0">No hay correos registrados</p>
-                          <small class="text-muted">Agrega el primer correo usando el formulario</small>
+                          <p class="text-muted mb-0">No hay contactos registrados</p>
+                          <small class="text-muted">Agrega el primer contacto usando el formulario</small>
                         </div>
                       </div>
                     </div>
@@ -203,7 +216,7 @@
       </div>
     </div>
   </div>
-</template>
+</template> 
 
 <script setup>
 import { ref, onMounted, onUpdated } from 'vue';
@@ -211,15 +224,14 @@ import { Collapse } from 'bootstrap';
 import '../assets/settings.css'; 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
-const destinatarios = ref([]);
-const newEmail = ref({ nombre: '', email: '' });
+const contactos = ref([]);
+const newContacto = ref({ nombre: '', tipo: 'EMAIL', valor: '' });
 const loading = ref(false);
 
-// ELIMINA el estado reactive - Bootstrap maneja el estado
 
 onMounted(() => {
   initializeBootstrap();
-  fetchDestinatarios();
+  fetchContactos();
 });
 
 onUpdated(() => {
@@ -235,14 +247,13 @@ function initializeBootstrap() {
   });
 }
 
-// Tus funciones existentes se mantienen igual...
-async function fetchDestinatarios() {
+async function fetchContactos() {
   loading.value = true;
   try {
     const res = await fetch(`${API_BASE}/destinatarios`);
     const data = await res.json();
     if (data.success) {
-      destinatarios.value = data.data;
+      contactos.value = data.data;
     }
   } catch (e) {
     console.error("Error al cargar destinatarios:", e);
@@ -251,31 +262,38 @@ async function fetchDestinatarios() {
   }
 }
 
-async function addEmail() {
+async function addContacto() {
   loading.value = true;
   try {
+    // Asegúrate de que el número de WA tenga el formato correcto
+    if (newContacto.value.tipo === 'WHATSAPP' && !newContacto.value.valor.startsWith('+')) {
+      alert('El número de WhatsApp debe incluir el código de país (ej: +50212345678)');
+      loading.value = false;
+      return;
+    }
+
     await fetch(`${API_BASE}/destinatarios`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newEmail.value)
+      body: JSON.stringify(newContacto.value) // Envía el objeto unificado
     });
-    newEmail.value = { nombre: '', email: '' };
-    await fetchDestinatarios();
+    newContacto.value = { nombre: '', tipo: 'EMAIL', valor: '' }; // Limpia el formulario
+    await fetchContactos(); // Recarga la lista
   } catch (e) {
-    console.error("Error al añadir email:", e);
+    console.error("Error al añadir contacto:", e);
   } finally {
     loading.value = false;
   }
 }
 
-async function deleteEmail(id) {
+async function deleteContacto(id) {
   if (!confirm('¿Estás seguro de que quieres eliminar este correo?')) return;
   loading.value = true;
   try {
     await fetch(`${API_BASE}/destinatarios/${id}`, {
       method: 'DELETE'
     });
-    await fetchDestinatarios();
+    await fetchContactos();
   } catch (e) {
     console.error("Error al eliminar email:", e);
   } finally {

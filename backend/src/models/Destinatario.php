@@ -8,21 +8,21 @@ class Destinatario {
         $this->pdo = $pdo;
     }
 
-    // Obtener todos los destinatarios
     public function getDestinatarios() {
         $stmt = $this->pdo->query("SELECT * FROM alerta_destinatarios ORDER BY nombre ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Añadir un nuevo destinatario
-    public function addDestinatario($email, $nombre) {
-        // Usamos IGNORE para evitar errores si el email ya existe (UNIQUE)
-        $sql = "INSERT IGNORE INTO alerta_destinatarios (email, nombre, habilitado) VALUES (:email, :nombre, 1)";
+    public function addDestinatario($nombre, $tipo, $valor) {
+        $sql = "INSERT IGNORE INTO alerta_destinatarios (nombre, tipo, valor, habilitado) VALUES (:nombre, :tipo, :valor, 1)";
         $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([':email' => $email, ':nombre' => $nombre]);
+        return $stmt->execute([
+            ':nombre' => $nombre,
+            ':tipo' => $tipo,
+            ':valor' => $valor
+        ]);
     }
 
-    // Eliminar un destinatario
     public function deleteDestinatario($id) {
         $sql = "DELETE FROM alerta_destinatarios WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);

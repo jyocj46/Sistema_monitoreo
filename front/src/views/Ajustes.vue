@@ -1,3 +1,4 @@
+     <!-- src/views/Ajustes.vue -->
 <template>
   <div class="settings-page container-fluid py-4">
     <div class="row justify-content-center">
@@ -219,8 +220,7 @@
 </template> 
 
 <script setup>
-import { ref, onMounted, onUpdated } from 'vue';
-import { Collapse } from 'bootstrap';
+import { ref, onMounted, nextTick } from 'vue';
 import '../assets/settings.css'; 
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost/api';
@@ -229,21 +229,27 @@ const newContacto = ref({ nombre: '', tipo: 'EMAIL', valor: '' });
 const loading = ref(false);
 
 
-onMounted(() => {
-  initializeBootstrap();
-  fetchContactos();
+onMounted(async () => {
+  await fetchContactos();
+  
+  // Esperar a que el DOM se actualice completamente
+  await nextTick();
+  
+  // Forzar inicialización de componentes Bootstrap
+  initializeBootstrapComponents();
 });
 
-onUpdated(() => {
-  initializeBootstrap();
-});
-
-function initializeBootstrap() {
-  const collapses = document.querySelectorAll('.collapse');
-  collapses.forEach(collapse => {
-    new Collapse(collapse, {
-      toggle: false
-    });
+function initializeBootstrapComponents() {
+  // Inicializar manualmente los collapses
+  const collapseElementList = document.querySelectorAll('.collapse');
+  const collapseList = [...collapseElementList].map(collapseEl => {
+    // Solo inicializar si no está ya inicializado
+    if (!collapseEl._collapse) {
+      return new bootstrap.Collapse(collapseEl, {
+        toggle: false
+      });
+    }
+    return collapseEl._collapse;
   });
 }
 

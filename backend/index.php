@@ -131,6 +131,33 @@ $dest_loaded = false;
         }
     }
 
+$user_controller_guess = $db_path
+     ? str_replace('config/db.php', 'controllers/UsuarioController.php', $db_path)
+     : null;
+
+$user_controller_paths = array_values(array_unique(array_filter([
+     $user_controller_guess,
+     __DIR__ . '/../src/controllers/UsuarioController.php',
+     __DIR__ . '/../../src/controllers/UsuarioController.php',
+     __DIR__ . '/src/controllers/UsuarioController.php',
+     '/home1/detponco/src/controllers/UsuarioController.php'
+])));     
+
+$user_loaded = false; // 1. Inicializa la variable
+foreach ($user_controller_paths as $uctrl) {
+    if ($uctrl && file_exists($uctrl)) {
+        require_once $uctrl;
+        $user_loaded = true; // 2. ¡LA LÍNEA MÁS IMPORTANTE!
+        break;
+    }
+}
+
+if (!$user_loaded) {
+     http_response_code(500);
+     echo json_encode(['error' => 'No se pudo encontrar UsuarioController.php']);
+     exit;
+}
+
 try {
     $req_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $req_path = str_replace('/api', '', $req_path);
@@ -140,11 +167,16 @@ try {
     
     $controller      = new TemperatureController($pdo);
     $paramController = new ParameterController($pdo);
+    $usuarioController = new UsuarioController();
     $alertController = $alert_loaded ? new AlertController($pdo) : null;
     $destController = $dest_loaded ? new DestinatarioController($pdo) : null;
+    
 
     switch (true) {
 
+        case $req_path === '/login' && $method === 'POST':
+            $usuarioController->login(); 
+            break;
         
         case $req_path === '/lecturas' && $method === 'GET':
             $sensorId    = isset($_GET['sensor_id']) ? (int)$_GET['sensor_id'] : null;
@@ -248,6 +280,27 @@ try {
             $id = (int)$matches[1];
             echo json_encode($destController->delete($id));
             break;
+
+        case $req_path === '/debug/wa' && $method === 'GET':
+            // Cambiar el header a texto plano para ver el log
+            header('Content-Type: text/plain; charset=utf-8');
+            echo "--- INICIANDO PRUEBA DE WHATSAPP ---\n\n";
+
+            // ¡Modificación temporal! Cambia 'error_log' por 'echo' en el Helper
+            echo "AVISO: Para ver el log de cURL, debes cambiar temporalmente todas las llamadas 'error_log(' por 'echo (' en WhatsappHelper.php\n\n";
+
+            $dummy = [
+                'cuarto_nombre'   => 'TEST',
+                'variable'        => 'Temperatura',
+                'valor_medido'    => '99',
+                'rango_esperado'  => '1-2',
+            ];
+
+            // Llamar al helper (cuyos 'error_log' ahora son 'echo')
+            WhatsAppHelper::enviarMensajeAlerta($dummy, $pdo);
+
+            echo "\n--- PRUEBA FINALIZADA ---\n";
+            exit; // Detener el script 
 
         default:
             http_response_code(404);

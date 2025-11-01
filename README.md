@@ -1,7 +1,3 @@
-¡Excelente idea! Un buen archivo README.md es fundamental para cualquier proyecto. Basado en absolutamente todo lo que hemos construido y discutido, he preparado un README.md completo y bien estructurado que puedes copiar y pegar directamente en tu repositorio.
-
-Este archivo documenta la arquitectura, las características, el stack tecnológico y cómo poner en marcha el proyecto.
-
 Sistema de Monitoreo de Cuartos Fríos
 Este es un proyecto integral de IoT (Internet de las Cosas) para el monitoreo en tiempo real de temperatura y humedad, diseñado específicamente para la supervisión de cuartos fríos.
 

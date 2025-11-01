@@ -280,14 +280,14 @@ const limpiarFiltros = () => {
             </div>
 
             <div class="col-12">
-<div class="generate-btn-container d-flex gap-2 justify-content-end">
-  <button @click="generarReporte" :disabled="cargando" class="btn btn-primary">
-    {{ cargando ? 'Generando...' : 'Generar Reporte' }}
-  </button>
-  <button @click="limpiarFiltros" :disabled="cargando" class="btn btn-outline-secondary">
-    Limpiar filtros
-  </button>
-</div>
+              <div class="generate-btn-container d-flex gap-2 justify-content-end">
+                <button @click="generarReporte" :disabled="cargando" class="btn btn-primary">
+                  {{ cargando ? 'Generando...' : 'Generar Reporte' }}
+                </button>
+                <button @click="limpiarFiltros" :disabled="cargando" class="btn btn-outline-secondary">
+                  Limpiar filtros
+                </button>
+              </div>
             </div>
             
           </div>

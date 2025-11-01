@@ -8,9 +8,12 @@
         <router-link to="/">Dashboard</router-link>
         <router-link to="/reports">Reportes</router-link>
         <router-link to="/parametros">Parámetros</router-link> 
-        <a>Historial</a>
         <a>Productos</a>
         <router-link to="/ajustes">Ajustes</router-link> 
+        <router-link v-if="!isLoggedIn" to="/login">Login</router-link>     
+        <a v-else @click="handleLogout" class="logout-button">
+          Cerrar Sesión
+        </a>
       </nav>
     </aside>
 
@@ -36,7 +39,36 @@
 
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+
 const isSidebarOpen = ref(false)
+
+const router = useRouter()
+const route = useRoute()
+const isLoggedIn = ref(false)
+
+const checkAuth = () => {
+  isLoggedIn.value = !!localStorage.getItem('auth_token')
+}
+
+onMounted(() => {
+  checkAuth()
+})
+
+watch(() => route.path, (newPath) => {
+  checkAuth()
+})
+
+function handleLogout() {
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('user')
+  
+  isLoggedIn.value = false
+ 
+
+  router.push({ name: 'Login' })
+}
+
 </script>
 

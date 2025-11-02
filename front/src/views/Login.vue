@@ -1,74 +1,81 @@
+<!-- // src/views/Login.vue -->
 <template>
-  <div class="d-flex align-items-center py-4 bg-body-tertiary vh-100">
-    <main class="form-signin w-100 m-auto">
-      <form @submit.prevent="handleLogin" class="needs-validation" novalidate>
-        <div class="logo-container mb-4">
-          <img
-            src="../assets/images/Recurso 35@4x.png"
-            alt="Logo de la aplicación"
-            class="login-logo"
-          />
-        </div>
-        <h1 class="h3 mb-3 fw-normal">Inicia sesión</h1>
-        
-        <div class="form-floating">
-          <input
-            type="email"
-            class="form-control"
-            id="floatingInput"
-            placeholder="example@detpon.com"
-            v-model="email"
-            required
-          />
-          <label for="floatingInput">Correo electrónico</label>
-        </div>
-        
-        <div class="form-floating">
-          <input
-            type="password"
-            class="form-control"
-            id="floatingPassword"
-            placeholder="Password"
-            v-model="password"
-            required
-          />
-          <label for="floatingPassword">Contraseña</label>
+  <div class="login-container">
+    <div class="login-background">
+      <div class="login-card">
+        <!-- Header con Logo -->
+        <div class="login-header text-center mb-4">
+          <div class="logo-container mb-3">
+            <img
+              src="../assets/images/Recurso 33@4x.png"
+              alt="Logo de la aplicación"
+              class="login-logo"
+            />
+          </div>
+          <h1 class="login-title">Bienvenido</h1>
+          <p class="login-subtitle">Inicia sesión con tu usuario</p>
         </div>
 
-        <p v-if="errorMsg" class="text-danger mt-2">{{ errorMsg }}</p>
+        <!-- Formulario -->
+        <form @submit.prevent="handleLogin" class="login-form">
+          <div class="mb-3">
+            <label for="floatingInput" class="form-label">Correo electrónico</label>
+            <input
+              type="email"
+              class="form-control form-control-lg"
+              id="floatingInput"
+              placeholder="example@detpon.com"
+              v-model="email"
+              required
+            />
+          </div>
+          
+          <div class="mb-3">
+            <label for="floatingPassword" class="form-label">Contraseña</label>
+            <input
+              type="password"
+              class="form-control form-control-lg"
+              id="floatingPassword"
+              placeholder="Ingresa tu contraseña"
+              v-model="password"
+              required
+            />
+          </div>
 
-        <button class="btn btn-primary w-100 py-2 mt-3" type="submit" :disabled="loading">
-          <span v-if="loading">Ingresando...</span>
-          <span v-else>Iniciar sesión</span>
-        </button>
-        
-      </form>
-    </main>
+          <!-- Mensaje de error -->
+          <div v-if="errorMsg" class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ errorMsg }}
+            <button type="button" class="btn-close" @click="errorMsg = ''"></button>
+          </div>
+
+          <!-- Botón de login -->
+          <button class="btn btn-login w-100 py-3 mt-3" type="submit" :disabled="loading">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+            {{ loading ? 'Ingresando...' : 'Iniciar sesión' }}
+          </button>
+        </form>
+      </div>
     </div>
+  </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-// 6. Asumiendo que moviste la lógica a 'src/api/auth.js'
 import loginRequest from '../api/auth.js' 
 import '../assets/login.css'; 
 
 const router = useRouter()
-
-// Estas refs ahora se llenarán gracias a v-model
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 
-// Esta función ahora coincide con el @submit
 async function handleLogin() {
   errorMsg.value = ''
   loading.value = true
 
   try {
-    // Los .value se pasan correctamente a la función importada
     const data = await loginRequest(email.value, password.value)
     localStorage.setItem('auth_token', data.token)
     localStorage.setItem('user', JSON.stringify(data.user || {}))

@@ -1,4 +1,4 @@
-<!---->
+<!-- src/views/Parameters.vue -->
 <template>
   <div class="container-fluid parameters-container">
 
@@ -28,11 +28,11 @@
       <div class="card-body parameters-body">
         <div class="row mb-3">
           <div class="col-6">
-            <label :for="`temp_min_${param.cuarto_id}`" class="form-label">Temp. Mín (°{{ displayUnit }})</label>
+            <label :for="`temp_min_${param.cuarto_id}`" class="parameters-form-label">Temp. Mín (°{{ displayUnit }})</label>
             <input type="number" class="form-control" :id="`temp_min_${param.cuarto_id}`" :disabled="!param.isEditing" :value="displayTemp(param.temp_min_c)" @input="updateTempValue(param, 'temp_min_c', $event.target.value)">
           </div>
           <div class="col-6">
-            <label :for="`temp_max_${param.cuarto_id}`" class="form-label">Temp. Máx (°{{ displayUnit }})</label>
+            <label :for="`temp_max_${param.cuarto_id}`" class="parameters-form-label">Temp. Máx (°{{ displayUnit }})</label>
             <input type="number" class="form-control" :id="`temp_max_${param.cuarto_id}`" :disabled="!param.isEditing"
                 :value="displayTemp(param.temp_max_c)"
                 @input="updateTempValue(param, 'temp_max_c', $event.target.value)">
@@ -41,11 +41,11 @@
         
         <div class="row">
           <div class="col-6">
-            <label :for="`hum_min_${param.cuarto_id}`" class="form-label">Hum. Mín (%)</label>
+            <label :for="`hum_min_${param.cuarto_id}`" class="parameters-form-label">Hum. Mín (%)</label>
             <input type="number" class="form-control" :disabled="!param.isEditing" :id="`hum_min_${param.cuarto_id}`"  v-model.number="param.hum_min_pct">
           </div>
           <div class="col-6">
-            <label :for="`hum_max_${param.cuarto_id}`" class="form-label">Hum. Máx (%)</label>
+            <label :for="`hum_max_${param.cuarto_id}`" class="parameters-form-label">Hum. Máx (%)</label>
             <input type="number" class="form-control" :disabled="!param.isEditing" :id="`hum_max_${param.cuarto_id}`" v-model.number="param.hum_max_pct">
           </div>
         </div>
@@ -85,6 +85,7 @@
         </div>
       </div>
     </div>
+    <!--Fin row cards -->
   </div>
 </template>
 

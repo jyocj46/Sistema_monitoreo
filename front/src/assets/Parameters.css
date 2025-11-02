@@ -34,10 +34,10 @@
   border-radius: 6px;
 }
 
-.form-label {
+.parameters-form-label {
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #4b5563;
+  color: rgb(7, 2, 13);
 }
 
 .form-control:disabled {

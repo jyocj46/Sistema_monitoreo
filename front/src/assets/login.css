@@ -1,96 +1,34 @@
-      .bd-placeholder-img {
-        font-size: 1.125rem;
-        text-anchor: middle;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        user-select: none;
-      }
-      @media (min-width: 768px) {
-        .bd-placeholder-img-lg {
-          font-size: 3.5rem;
-        }
-      }
-      .b-example-divider {
-        width: 100%;
-        height: 3rem;
-        background-color: #0000001a;
-        border: solid rgba(0, 0, 0, 0.15);
-        border-width: 1px 0;
-        box-shadow:
-          inset 0 0.5em 1.5em #0000001a,
-          inset 0 0.125em 0.5em #00000026;
-      }
-      .b-example-vr {
-        flex-shrink: 0;
-        width: 1.5rem;
-        height: 100vh;
-      }
-      .bi {
-        vertical-align: -0.125em;
-        fill: currentColor;
-      }
-      .nav-scroller {
-        position: relative;
-        z-index: 2;
-        height: 2.75rem;
-        overflow-y: hidden;
-      }
-      .nav-scroller .nav {
-        display: flex;
-        flex-wrap: nowrap;
-        padding-bottom: 1rem;
-        margin-top: -1px;
-        overflow-x: auto;
-        text-align: center;
-        white-space: nowrap;
-        -webkit-overflow-scrolling: touch;
-      }
-      .btn-bd-primary {
-        --bd-violet-bg: #712cf9;
-        --bd-violet-rgb: 112.520718, 44.062154, 249.437846;
-        --bs-btn-font-weight: 600;
-        --bs-btn-color: var(--bs-white);
-        --bs-btn-bg: var(--bd-violet-bg);
-        --bs-btn-border-color: var(--bd-violet-bg);
-        --bs-btn-hover-color: var(--bs-white);
-        --bs-btn-hover-bg: #6528e0;
-        --bs-btn-hover-border-color: #6528e0;
-        --bs-btn-focus-shadow-rgb: var(--bd-violet-rgb);
-        --bs-btn-active-color: var(--bs-btn-hover-color);
-        --bs-btn-active-bg: #5a23c8;
-        --bs-btn-active-border-color: #5a23c8;
-      }
-      .bd-mode-toggle {
-        z-index: 1500;
-      }
-      .bd-mode-toggle .bi {
-        width: 1em;
-        height: 1em;
-      }
-      .bd-mode-toggle .dropdown-menu .active .bi {
-        display: block !important;
-      }
-    
-      .form-signin {
-  max-width: 330px;
+/* login.css - Diseño moderno y responsive */
+
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, rgb(42, 75, 34) 0%, rgb(85, 155, 38) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 1rem;
 }
 
-.form-signin .form-floating:focus-within {
-  z-index: 2;
+.login-background {
+  width: 100%;
+  max-width: 400px;
+  animation: fadeIn 0.8s ease-in-out;
 }
 
-.form-signin input[type="email"] {
-  margin-bottom: -1px;
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
+.login-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: 0 15px 35px rgba(7, 2, 13, 0.2);
+  border: 1px solid rgba(221, 221, 221, 0.3);
 }
 
-.form-signin input[type="password"] {
-  margin-bottom: 10px;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+.login-header {
+  border-bottom: 2px solid rgb(85, 155, 38);
+  padding-bottom: 1.5rem;
 }
+
 .logo-container {
   display: flex;
   justify-content: center;
@@ -98,8 +36,173 @@
 }
 
 .login-logo {
-  max-width: 200px;  /* Máximo ancho */
-  width: 100%;       /* Se adapta al contenedor */
-  height: auto;      /* Proporción automática */
-  object-fit: contain; /* Mantiene relación de aspecto */
+  max-width: 180px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(7, 2, 13, 0.1));
+}
+
+.login-title {
+  color: rgb(221,221,221);
+  font-weight: 700;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+  color: rgb(85, 155, 38);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.login-form {
+  margin-top: 1.5rem;
+}
+
+.form-label {
+  color: rgb(221,221,221);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.form-control {
+  border: 2px solid rgb(221, 221, 221);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.form-control:focus {
+  border-color: rgb(85, 155, 38);
+  box-shadow: 0 0 0 0.2rem rgba(85, 155, 38, 0.25);
+  background: white;
+}
+
+.form-control-lg {
+  padding: 1rem 1.25rem;
+}
+
+.btn-login {
+  background: linear-gradient(135deg, rgb(37, 80, 26) 0%, rgb(85, 155, 38) 100%);
+  border: none;
+  border-radius: 12px;
+  color: white !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(85, 155, 38, 0.3);
+}
+
+.btn-login:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(85, 155, 38, 0.4);
+}
+
+.btn-login:active {
+  transform: translateY(0);
+}
+
+.btn-login:disabled {
+  opacity: 0.7;
+  transform: none;
+}
+
+.alert-danger {
+  border-radius: 12px;
+  border: 1px solid #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  color: #721c24;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-container {
+    padding: 0.5rem;
+  }
+  
+  .login-card {
+    padding: 2rem 1.5rem;
+    margin: 1rem;
+  }
+  
+  .login-logo {
+    max-width: 150px;
+  }
+  
+  .login-title {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 1.5rem 1rem;
+    border-radius: 15px;
+  }
+  
+  .login-logo {
+    max-width: 120px;
+  }
+  
+  .form-control-lg {
+    padding: 0.875rem 1rem;
+  }
+  
+  .btn-login {
+    padding: 0.875rem;
+  }
+}
+
+/* Efectos de carga */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Placeholder styling */
+.form-control::placeholder {
+  color: #999;
+  opacity: 0.7;
+}
+
+/* Validación visual */
+.form-control:invalid:not(:focus) {
+  border-color: #dc3545;
+}
+
+.form-control:valid:not(:focus) {
+  border-color: #198754;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .login-card {
+    background: rgba(30, 30, 30, 0.95);
+    color: white;
+  }
+  
+  .form-control {
+    background: rgba(50, 50, 50, 0.9);
+    border-color: #444;
+    color: white;
+  }
+  
+  .form-control:focus {
+    background: #333;
+  }
 }

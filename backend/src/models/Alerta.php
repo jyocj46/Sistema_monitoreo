@@ -11,38 +11,74 @@ class Alerta {
         $this->pdo = $pdo;
     }
 
-    
     public function verificarYGestionarAlertas(array $lectura) {
-       
+
         $params = $this->getParametrosPorCuarto($lectura['cuarto_id']);
         if (!$params || !$params['habilitado']) {
             return; 
         }
 
         
-        $this->evaluarVariable(
-            $lectura, $params, 'TEMPERATURA', 
-            $lectura['temperatura_c'], $params['temp_min_c'], $params['temp_max_c']
+        $nivelTemp = $this->evaluarNivelAlerta(
+            $lectura['temperatura_c'],
+            $params['temp_warn_min_c'], $params['temp_warn_max_c'],
+            $params['temp_crit_min_c'], $params['temp_crit_max_c']
         );
+        
+        $this->gestionarEstadoAlerta($lectura, $params, 'TEMPERATURA', $nivelTemp);
 
         
-        $this->evaluarVariable(
-            $lectura, $params, 'HUMEDAD',
-            $lectura['humedad_pct'], $params['hum_min_pct'], $params['hum_max_pct']
+        $nivelHum = $this->evaluarNivelAlerta(
+            $lectura['humedad_pct'],
+            $params['hum_warn_min_pct'], $params['hum_warn_max_pct'],
+            $params['hum_crit_min_pct'], $params['hum_crit_max_pct']
         );
+        
+        $this->gestionarEstadoAlerta($lectura, $params, 'HUMEDAD', $nivelHum);
     }
 
-    private function evaluarVariable($lectura, $params, $variable, $valorMedido, $min, $max) {
+    private function gestionarEstadoAlerta($lectura, $params, $variable, $nuevoNivel) {
         $alertaAbierta = $this->getAlertaAbierta($lectura['cuarto_id'], $variable);
-        $fueraDeRango = ($valorMedido < $min) || ($valorMedido > $max);
+        $prioridadAbierta = $alertaAbierta ? $alertaAbierta['prioridad'] : null;
 
-        if ($fueraDeRango && !$alertaAbierta) {
-            
-            $this->crearAlerta($lectura, $variable, $valorMedido, $min, $max, $params['cuarto_nombre']);
-        } elseif (!$fueraDeRango && $alertaAbierta) {
-            
-            $this->cerrarAlerta($alertaAbierta['id']);
+        if ($nuevoNivel === 'OK') {
+
+            if ($alertaAbierta) {
+                $this->cerrarAlerta($alertaAbierta['id']);
+            }
+        } else {
+
+            $valorMedido = ($variable === 'TEMPERATURA') ? $lectura['temperatura_c'] : $lectura['humedad_pct'];
+            $rangoWarn = ($variable === 'TEMPERATURA') ? "{$params['temp_warn_min_c']} - {$params['temp_warn_max_c']}" : "{$params['hum_warn_min_pct']} - {$params['hum_warn_max_pct']}";
+            $rangoCrit = ($variable === 'TEMPERATURA') ? "{$params['temp_crit_min_c']} - {$params['temp_crit_max_c']}" : "{$params['hum_crit_min_pct']} - {$params['hum_crit_max_pct']}";
+
+            if (!$alertaAbierta) {
+    
+                $this->crearAlerta($lectura, $variable, $valorMedido, $nuevoNivel, $rangoWarn, $rangoCrit, $params['cuarto_nombre']);
+
+            } else if ($nuevoNivel !== $prioridadAbierta) {
+    
+                $this->actualizarPrioridadAlerta($alertaAbierta['id'], $nuevoNivel);
+
+                if ($nuevoNivel === 'ALTA') {
+                    $this->notificar(
+                        $nuevoNivel, 
+                        $this->crearDetallesNotificacion($params['cuarto_nombre'], $variable, $valorMedido, $rangoWarn, $rangoCrit)
+                    );
+                }
+            }
         }
+    }
+
+    private function evaluarNivelAlerta($valorMedido, $warn_min, $warn_max, $crit_min, $crit_max) {
+        
+        if ($crit_min !== null && $valorMedido < $crit_min) return 'ALTA';
+        if ($crit_max !== null && $valorMedido > $crit_max) return 'ALTA';
+
+        if ($warn_min !== null && $valorMedido < $warn_min) return 'MEDIA';
+        if ($warn_max !== null && $valorMedido > $warn_max) return 'MEDIA';
+        
+        return 'OK';
     }
 
     private function getParametrosPorCuarto(int $cuartoId) {
@@ -57,37 +93,74 @@ class Alerta {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    private function crearAlerta($lectura, $variable, $valorMedido, $min, $max, $cuartoNombre) {
-        $sql = "INSERT INTO alerta (cuarto_id, sensor_id, prioridad, variable, valor_medido, umbral_min, umbral_max, estado, abierta_en_utc)
-                VALUES (:cuarto_id, :sensor_id, :prioridad, :variable, :valor_medido, :umbral_min, :umbral_max, 'ABIERTA', UTC_TIMESTAMP())";
+    private function crearAlerta($lectura, $variable, $valorMedido, $prioridad, $rangoWarn, $rangoCrit, $cuartoNombre) {
+    
+        $sql = "INSERT INTO alerta (
+                    cuarto_id,
+                    sensor_id,
+                    prioridad,
+                    variable,
+                    valor_medido,
+                    umbral_min,
+                    umbral_max,
+                    estado,
+                    abierta_en_utc
+                ) VALUES (
+                    :cuarto_id,
+                    :sensor_id,
+                    :prioridad,
+                    :variable,
+                    :valor_medido,
+                    :umbral_min,
+                    :umbral_max,
+                    'ABIERTA',
+                    UTC_TIMESTAMP()
+                )";
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':cuarto_id'    => $lectura['cuarto_id'],
             ':sensor_id'    => $lectura['sensor_id'],
-            ':prioridad'    => 'ALTA', // Podrías hacerlo más complejo después
+            ':prioridad'    => $prioridad,   
             ':variable'     => $variable,
             ':valor_medido' => $valorMedido,
-            ':umbral_min'   => $min,
-            ':umbral_max'   => $max
+            ':umbral_min'   => $rangoWarn,   
+            ':umbral_max'   => $rangoCrit    
         ]);
 
-        $detallesParaEmail = [
+        $detalles = $this->crearDetallesNotificacion($cuartoNombre, $variable, $valorMedido, $rangoWarn, $rangoCrit);
+        $this->notificar($prioridad, $detalles);
+    }
+
+    private function crearDetallesNotificacion($cuartoNombre, $variable, $valorMedido, $rangoWarn, $rangoCrit) {
+        $rango = ($variable === 'TEMPERATURA') ? 'Rango Advertencia' : 'Rango Advertencia';
+        return [
             'cuarto_nombre' => $cuartoNombre,
             'variable'      => $variable,
             'valor_medido'  => $valorMedido,
-            'rango_esperado' => "$min - $max"
+            'rango_esperado' => $rangoWarn // Enviamos el rango de advertencia en la notificación
         ];
+    }
 
-        try {
-            MailHelper::enviarCorreoDeAlerta($detallesParaEmail, $this->pdo);
-        } catch (Exception $e) {
-            error_log("Falló el envío de email: " . $e->getMessage());
+    private function notificar($prioridad, $detalles) {
+    try {
+
+        if ($prioridad === 'MEDIA' || $prioridad === 'ALTA') {
+            MailHelper::enviarCorreoDeAlerta($detalles, $this->pdo);
         }
-        try {
-            WhatsAppHelper::enviarMensajeAlerta($detallesParaEmail, $this->pdo);
-        } catch (Exception $e) {
-            error_log("Falló WhatsApp: " . $e->getMessage());
+        if ($prioridad === 'ALTA') {
+            WhatsAppHelper::enviarMensajeAlerta($detalles, $this->pdo);
         }
+
+    } catch (Exception $e) {
+        error_log("Fallo al NOTIFICAR: " . $e->getMessage());
+    }
+    }
+
+    private function actualizarPrioridadAlerta($alertaId, $nuevaPrioridad) {
+        $sql = "UPDATE alerta SET prioridad = :prioridad WHERE id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':prioridad' => $nuevaPrioridad, ':id' => $alertaId]);
     }
 
     private function cerrarAlerta(int $alertaId) {

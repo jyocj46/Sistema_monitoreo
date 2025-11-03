@@ -81,7 +81,21 @@
   box-shadow: 0 0 0.75rem rgba(220, 53, 69, 0.35); /* rojo bootstrap */
 }
 
-/* Hover consistente (no altera tu diseño base) */
+.card.alert-glow { /* Esta clase ya no se usa, puedes borrarla */
+  border: 2px solid var(--bs-danger) ;
+  box-shadow: 0 0 15px rgba(var(--bs-danger-rgb), 0.6)t;
+}
+
+.card.alert-media {
+  border: 2px solid var(--bs-warning) ;
+  box-shadow: 0 0 15px rgba(var(--bs-warning-rgb), 0.6);
+}
+
+.card.alert-alta {
+  border: 2px solid var(--bs-danger) ;
+  box-shadow: 0 0 15px rgba(var(--bs-danger-rgb), 0.6) ;
+}
+
 .card.alert-glow:hover {
   box-shadow: 0 0 1.25rem rgba(220, 53, 69, 0.5);
   transition: box-shadow .2s ease-in-out, transform .2s ease-in-out;

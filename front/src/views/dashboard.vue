@@ -30,10 +30,10 @@
       </section>
 
       <section class="cards">
-        <article v-for="r in ultimasPorCuarto" :class="[{ 'in-alert': r.en_alerta },r.en_alerta ? 'border-danger border-2 alert-glow' : 'border-0 shadow-sm']" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
+        <article v-for="r in ultimasPorCuarto" :class="['card', 'border-0',{ 'alert-media': r.prioridad === 'MEDIA' },{ 'alert-alta': r.prioridad === 'ALTA' },{ 'shadow-sm': !r.prioridad }]" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
           <div class="card-head">
             <div class="head-left">
-                <span class="badge" :class="r.en_alerta ? 'bg-danger' : 'bg-primary'">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
+                <span class="badge" :class="r.prioridad === 'ALTA' ? 'bg-danger' : (r.prioridad === 'MEDIA' ? 'bg-warning text-dark' : 'bg-primary')">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
                 <span class="ago text-muted">{{ fromNow(r?.tomado_en_utc) }}</span>
             </div>
             <div class="head-right">
@@ -58,7 +58,7 @@
             <div>
               <div class="room fw-semibold">{{ roomName(r) }}</div>
                 <span class="pill"
-                      :class="r.en_alerta ? 'bg-danger-subtle text-danger-emphasis' : 'bg-light text-secondary'">
+                      :class="r.prioridad === 'ALTA' ? 'bg-danger-subtle text-danger-emphasis' : (r.prioridad === 'MEDIA' ? 'bg-warning-subtle text-warning-emphasis' : 'bg-light text-secondary')">
                   Humedad:
                   {{
                     r?.humedad_pct !== undefined && r?.humedad_pct !== null
@@ -67,7 +67,7 @@
                   }}
                 </span>
             </div>
-             <button class="link btn btn-sm" :class="r.en_alerta ? 'btn-outline-danger' : 'btn-outline-secondary'" @click="openModalChart(r)">Ver más</button>
+             <button class="link btn btn-sm" :class="r.prioridad === 'ALTA' ? 'btn-outline-danger' : (r.prioridad === 'MEDIA' ? 'btn-outline-warning' : 'btn-outline-secondary')" @click="openModalChart(r)">Ver más</button>
           </div>
         </article>
 
@@ -209,11 +209,17 @@ const ultimasPorCuarto = computed(() => {
     )
   )
 
-  // Mapeamos el resultado final para añadir el estado de alerta
-  return arr.map(lectura => {
-    const alerta = alertasActivas.value.find(a => a.cuarto_id === lectura.cuarto_id);
-    return { ...lectura, en_alerta: !!alerta }; // Añade 'en_alerta: true' si se encuentra
-  });
+return arr.map(lectura => {
+  const alerta = alertasActivas.value.find(a => 
+    (a.cuarto_id === lectura.cuarto_id) && 
+    (a.variable === 'TEMPERATURA' || a.variable === 'HUMEDAD') // Aseguramos que sea una alerta de variable
+  );
+  return { 
+    ...lectura, 
+    en_alerta: !!alerta, // Sigue siendo útil
+    prioridad: alerta ? alerta.prioridad : null // ¡AQUÍ ESTÁ LA MAGIA!
+  };
+});
 });
 
 

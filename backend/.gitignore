@@ -1,7 +1,7 @@
 # Archivos de configuración local
 .env
 env.php
-ultramsg.php
+
 # Archivos del sistema
 .DS_Store
 Thumbs.db

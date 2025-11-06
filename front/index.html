@@ -1,16 +1,29 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Monitoreo Cuartos Fríos</title>
-    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-</head>
-<body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+  <!DOCTYPE html>
+  <html lang="es">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <title>Monitoreo Cuartos Fríos</title>
+      <link rel="apple-touch-icon" href="/frontend/apple-touch-icon.png" />
+      <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+      <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          await OneSignal.init({
+            appId: 'fbc9c250-f973-4875-a782-273eb52fb58d',
+            serviceWorkerPath: '/frontend/OneSignalSDKWorker.js',  
+            serviceWorkerParam: { scope: '/frontend/' },           
+            allowLocalhostAsSecureOrigin: true
+          });
+        });
+</script>
+  </head>
+  <body>
+      <div id="app"></div>
+      <script type="module" src="/src/main.js"></script>
 
-</body>
-</html>
+  </body>
+  </html> 

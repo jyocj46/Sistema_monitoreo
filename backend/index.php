@@ -1,6 +1,5 @@
 <?php
 // /api/index.php
-
 header('Content-Type: application/json; charset=utf-8');
 
 // CORS
@@ -13,7 +12,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$possible_paths = [
+/**
+ * Función helper para cargar archivos de manera segura
+ */
+function cargarControlador($nombreArchivo, $dbPath = null) {
+    // Si tenemos dbPath, generamos la ruta guess
+    $guessPath = $dbPath ? str_replace('config/db.php', "controllers/{$nombreArchivo}", $dbPath) : null;
+    
+    $possiblePaths = array_values(array_unique(array_filter([
+        $guessPath,
+        __DIR__ . "/../src/controllers/{$nombreArchivo}",
+        __DIR__ . "/../../src/controllers/{$nombreArchivo}",
+        __DIR__ . "/src/controllers/{$nombreArchivo}",
+        '/home1/detponco/src/controllers/' . $nombreArchivo
+    ])));
+    
+    foreach ($possiblePaths as $path) {
+        if ($path && file_exists($path)) {
+            require_once $path;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// Primero cargar la configuración de la base de datos
+$possibleDbPaths = [
     __DIR__ . '/../src/config/db.php',
     __DIR__ . '/../../src/config/db.php',
     __DIR__ . '/src/config/db.php',
@@ -21,141 +46,39 @@ $possible_paths = [
 ];
 
 $db_loaded = false;
-$db_path   = null;
+$db_path = null;
 
-foreach ($possible_paths as $p) {
-    if (file_exists($p)) {
-        require_once $p;
+foreach ($possibleDbPaths as $path) {
+    if (file_exists($path)) {
+        require_once $path;
         $db_loaded = true;
-        $db_path   = $p;
+        $db_path = $path;
         break;
     }
 }
+
 if (!$db_loaded) {
     http_response_code(500);
     echo json_encode(['error' => 'No se pudo encontrar db.php']);
     exit;
 }
 
-$controller_path_guess = $db_path
-    ? str_replace('config/db.php', 'controllers/TemperatureController.php', $db_path)
-    : null;
+// Lista de controladores a cargar
+$controladores = [
+    'TemperatureController.php',
+    'ParameterController.php', 
+    'AlertController.php',
+    'DestinatarioController.php',
+    'UsuarioController.php',
+    'PushOneSignalController.php' 
+];
 
-$controller_paths = array_values(array_unique(array_filter([
-    $controller_path_guess,
-    __DIR__ . '/../src/controllers/TemperatureController.php',
-    __DIR__ . '/../../src/controllers/TemperatureController.php',
-    __DIR__ . '/src/controllers/TemperatureController.php',
-    '/home1/detponco/src/controllers/TemperatureController.php'
-])));
-
-$controller_loaded = false;
-foreach ($controller_paths as $ctrl_path) {
-    if ($ctrl_path && file_exists($ctrl_path)) {
-        require_once $ctrl_path;
-        $controller_loaded = true;
-        break;
+foreach ($controladores as $controlador) {
+    if (!cargarControlador($controlador, $db_path)) {
+        http_response_code(500);
+        echo json_encode(['error' => "No se pudo encontrar {$controlador}"]);
+        exit;
     }
-}
-if (!$controller_loaded) {
-    http_response_code(500);
-    echo json_encode(['error' => 'No se pudo encontrar TemperatureController.php']);
-    exit;
-}
-
-$param_controller_guess = $db_path
-    ? str_replace('config/db.php', 'controllers/ParameterController.php', $db_path)
-    : null;
-
-$param_controller_paths = array_values(array_unique(array_filter([
-    $param_controller_guess,
-    __DIR__ . '/../src/controllers/ParameterController.php',
-    __DIR__ . '/../../src/controllers/ParameterController.php',
-    __DIR__ . '/src/controllers/ParameterController.php',
-    '/home1/detponco/src/controllers/ParameterController.php'
-])));
-
-$param_loaded = false;
-foreach ($param_controller_paths as $pctrl) {
-    if ($pctrl && file_exists($pctrl)) {
-        require_once $pctrl;
-        $param_loaded = true;
-        break;
-    }
-}
-if (!$param_loaded) {
-    http_response_code(500);
-    echo json_encode(['error' => 'No se pudo encontrar ParameterController.php']);
-    exit;
-}
-
-$alert_controller_guess = $db_path
-    ? str_replace('config/db.php', 'controllers/AlertController.php', $db_path)
-    : null;
-
-$alert_controller_paths = array_values(array_unique(array_filter([
-    $alert_controller_guess,
-    __DIR__ . '/../src/controllers/AlertController.php',
-    __DIR__ . '/../../src/controllers/AlertController.php',
-    __DIR__ . '/src/controllers/AlertController.php',
-    '/home1/detponco/src/controllers/AlertController.php'
-])));
-
-$alert_loaded = false;
-foreach ($alert_controller_paths as $actrl) {
-    if ($actrl && file_exists($actrl)) {
-        require_once $actrl;
-        $alert_loaded = true;
-        break;
-    }
-}
-
-$dest_controller_guess = $db_path
-    ? str_replace('config/db.php', 'controllers/DestinatarioController.php', $db_path)
-    : null;
-
-$dest_controller_paths = array_values(array_unique(array_filter([
-    $dest_controller_guess,
-    __DIR__ . '/../src/controllers/DestinatarioController.php',
-    __DIR__ . '/../../src/controllers/DestinatarioController.php',
-    __DIR__ . '/src/controllers/DestinatarioController.php',
-    '/home1/detponco/src/controllers/DestinatarioController.php'
-])));
-
-$dest_loaded = false;
-    foreach ($dest_controller_paths as $dctrl) {
-        if ($dctrl && file_exists($dctrl)) {
-            require_once $dctrl;
-            $dest_loaded = true;
-            break;
-        }
-    }
-
-$user_controller_guess = $db_path
-     ? str_replace('config/db.php', 'controllers/UsuarioController.php', $db_path)
-     : null;
-
-$user_controller_paths = array_values(array_unique(array_filter([
-     $user_controller_guess,
-     __DIR__ . '/../src/controllers/UsuarioController.php',
-     __DIR__ . '/../../src/controllers/UsuarioController.php',
-     __DIR__ . '/src/controllers/UsuarioController.php',
-     '/home1/detponco/src/controllers/UsuarioController.php'
-])));     
-
-$user_loaded = false; // 1. Inicializa la variable
-foreach ($user_controller_paths as $uctrl) {
-    if ($uctrl && file_exists($uctrl)) {
-        require_once $uctrl;
-        $user_loaded = true; // 2. ¡LA LÍNEA MÁS IMPORTANTE!
-        break;
-    }
-}
-
-if (!$user_loaded) {
-     http_response_code(500);
-     echo json_encode(['error' => 'No se pudo encontrar UsuarioController.php']);
-     exit;
 }
 
 try {
@@ -165,12 +88,12 @@ try {
     $method   = $_SERVER['REQUEST_METHOD'];
 
     
-    $controller      = new TemperatureController($pdo);
-    $paramController = new ParameterController($pdo);
-    $usuarioController = new UsuarioController();
-    $alertController = $alert_loaded ? new AlertController($pdo) : null;
-    $destController = $dest_loaded ? new DestinatarioController($pdo) : null;
-    
+        $controller        = new TemperatureController($pdo);
+        $paramController   = new ParameterController($pdo);
+        $usuarioController = new UsuarioController(); // o new UsuarioController($pdo) si tu clase lo requiere
+        $alertController   = new AlertController($pdo);
+        $destController    = new DestinatarioController($pdo);
+        $pushCtrl = new PushOneSignalController($pdo);
 
     switch (true) {
 
@@ -281,7 +204,7 @@ try {
             echo json_encode($destController->delete($id));
             break;
 
-        case $req_path === '/debug/wa' && $method === 'GET':
+        /*case $req_path === '/debug/wa' && $method === 'GET':
             // Cambiar el header a texto plano para ver el log
             header('Content-Type: text/plain; charset=utf-8');
             echo "--- INICIANDO PRUEBA DE WHATSAPP ---\n\n";
@@ -300,7 +223,17 @@ try {
             WhatsAppHelper::enviarMensajeAlerta($dummy, $pdo);
 
             echo "\n--- PRUEBA FINALIZADA ---\n";
-            exit; // Detener el script 
+            exit; */
+            
+        case $req_path === '/subscribe_push' && $method === 'POST':
+            $input = json_decode(file_get_contents('php://input'), true);            
+            echo json_encode($pushCtrl->subscribe($input));
+            break;
+
+        case $req_path === '/unsubscribe_push' && $method === 'POST':
+            $input = json_decode(file_get_contents('php://input'), true);
+            echo json_encode($pushCtrl->unsubscribe($input));
+            break;        
 
         default:
             http_response_code(404);

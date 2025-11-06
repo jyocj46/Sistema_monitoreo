@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../helpers/phpmailer/MailHelper.php';
 require_once __DIR__ . '/../helpers/phpmailer/WhatsappHelper.php';
+require_once __DIR__ . '/../helpers/PushHelper.php';
 
 class Alerta {
     private $pdo;
@@ -143,18 +144,23 @@ class Alerta {
     }
 
     private function notificar($prioridad, $detalles) {
-    try {
-
-        if ($prioridad === 'MEDIA' || $prioridad === 'ALTA') {
-            MailHelper::enviarCorreoDeAlerta($detalles, $this->pdo);
+        try {
+            $esMediaAlta = ($prioridad === 'MEDIA' || $prioridad === 'ALTA');
+            $esAlta = ($prioridad === 'ALTA');            
+            if ($esMediaAlta) {    
+                MailHelper::enviarCorreoDeAlerta($detalles, $this->pdo);                
+                try {
+                    PushHelper::enviarNotificacionPush($detalles, $this->pdo);
+                } catch (Exception $e) {
+                    error_log("Fallo al enviar Push: " . $e->getMessage());        
+                }
+            }            
+            if ($esAlta) {    
+                WhatsAppHelper::enviarMensajeAlerta($detalles, $this->pdo);
+            }            
+        } catch (Exception $e) {
+            error_log("Fallo general en notificar: " . $e->getMessage());
         }
-        if ($prioridad === 'ALTA') {
-            WhatsAppHelper::enviarMensajeAlerta($detalles, $this->pdo);
-        }
-
-    } catch (Exception $e) {
-        error_log("Fallo al NOTIFICAR: " . $e->getMessage());
-    }
     }
 
     private function actualizarPrioridadAlerta($alertaId, $nuevaPrioridad) {

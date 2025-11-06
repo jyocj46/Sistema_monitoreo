@@ -26,7 +26,7 @@
               id="floatingInput"
               placeholder="example@detpon.com"
               v-model="email"
-              required
+              @input="errorMsg = ''"  required
             />
           </div>
           
@@ -38,7 +38,7 @@
               id="floatingPassword"
               placeholder="Ingresa tu contraseña"
               v-model="password"
-              required
+              @input="errorMsg = ''"  required
             />
           </div>
 
@@ -72,18 +72,33 @@ const loading = ref(false)
 const errorMsg = ref('')
 
 async function handleLogin() {
-  errorMsg.value = ''
   loading.value = true
 
   try {
     const data = await loginRequest(email.value, password.value)
-    localStorage.setItem('auth_token', data.token)
+
+    // =======================================================
+    // ¡¡ESTE ES EL SEGURO QUE ARREGLARÁ TU PROBLEMA!!
+    // =======================================================
+    // Si el backend (por culpa de un bug o caché) devuelve 200
+    // pero no envía un token, lo tratamos como un error.
+    if (!data.token) {
+        throw new Error(data.message || "Respuesta inválida del servidor");
+    }
+    // =======================================================
+
+    // Si llega aquí, es porque SÍ hay un token
+    localStorage.setItem('auth_token', data.token) 
     localStorage.setItem('user', JSON.stringify(data.user || {}))
-    router.push({ name: 'dashboard' })
+    router.push({ name: 'dashboard' }) 
+  
   } catch (err) {
+    // Ahora el 'throw new Error' de arriba también será
+    // atrapado aquí.
     errorMsg.value = err.message || 'Error al iniciar sesión'
   } finally {
     loading.value = false
   }
 }
+
 </script>

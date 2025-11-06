@@ -21,7 +21,7 @@ class Usuario {
      * @return array|false 
      */
     public function findByEmail($email) {
-        $query = "SELECT * FROM " . $this->table_name . " WHERE correo = :correo AND activo = 1 LIMIT 0,1";
+        $query = "SELECT * FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
 
         $stmt = $this->conn->prepare($query);
 

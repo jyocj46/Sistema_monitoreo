@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # --- ¡AÑADE ESTA LÍNEA! ---
+  # Le dice a Apache que todas las reglas son relativas a /frontend/
+  RewriteBase /frontend/
+
+  # Servir archivos y carpetas existentes
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Redirigir todo lo demás a index.html (para Vue Router)
+  RewriteRule . /frontend/index.html [L]
+</IfModule>

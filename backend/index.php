@@ -104,7 +104,7 @@ try {
         case $req_path === '/lecturas' && $method === 'GET':
             $sensorId    = isset($_GET['sensor_id']) ? (int)$_GET['sensor_id'] : null;
             $cuartoId    = isset($_GET['cuarto_id']) ? (int)$_GET['cuarto_id'] : null;
-            $limit       = isset($_GET['limit']) ? max(1, min((int)$_GET['limit'], 1000)) : 200;
+            $limit       = isset($_GET['limit']) ? max(1, min((int)$_GET['limit'], 50000)) : 200;
             $fechaInicio = $_GET['fecha_inicio'] ?? null;
             $fechaFin    = $_GET['fecha_fin'] ?? null;
             $horaInicio  = $_GET['hora_inicio'] ?? null; 

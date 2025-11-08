@@ -291,4 +291,18 @@ class Temperature {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    private function getUltimasLecturasParaIA($cuarto_id) {
+        $sql = "SELECT temperatura_c, humedad_pct 
+                FROM lecturas 
+                WHERE cuarto_id = ? 
+                ORDER BY tomado_en_utc DESC 
+                LIMIT ?";
+        
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$cuarto_id, $this->time_steps_ia]);
+        $lecturas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_reverse($lecturas); 
+    }
 }

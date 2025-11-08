@@ -1,0 +1,31 @@
+RewriteEngine On
+Options -MultiViews
+
+# --- Configuración CORS para la API ---
+Header always set Access-Control-Allow-Origin "https://drover.detpon.com"
+Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type"
+
+# --- Manejo de preflight OPTIONS ---
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ - [R=204,L]
+
+# --- REGLA 1: Redirigir la raíz al frontend ---
+RewriteCond %{HTTP_HOST} ^drover\.detpon\.com$ [NC]
+RewriteRule ^$ /frontend/index.html [L]
+
+# --- REGLA 2: API -> /api/index.php ---
+RewriteCond %{REQUEST_URI} ^/api/ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ /api/index.php [QSA,L]
+
+# --- REGLA 3: Vue SPA -> /frontend/index.html (catch-all excepto /api) ---
+RewriteCond %{REQUEST_URI} !^/api/ [NC]
+RewriteCond %{REQUEST_URI} !^/frontend/ [NC]  # Evitar redirección infinita
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /frontend/index.html [QSA,L]
+
+# --- Directorio index para la raíz ---
+DirectoryIndex frontend/index.html

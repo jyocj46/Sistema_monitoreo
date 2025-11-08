@@ -5,9 +5,14 @@ require_once __DIR__ . '/../models/Temperature.php';
 
 class TemperatureController {
     private $temperatureModel;
+    private $pdo;
 
+    private $ai_service_url = 'https://ia-cuartos-frios-prod.onrender.com/detectar';
+    private $time_steps_ia = 6;
+    
     public function __construct($pdo) {
         $this->temperatureModel = new Temperature($pdo);
+        $this->pdo = $pdo;
     }
 
     
@@ -140,11 +145,53 @@ class TemperatureController {
                     (float)$datos['humedad_pct']
                 );
 
+            $ia_check_result = null; 
+                try {
+                    
+                   
+                    $ultimas_lecturas = $this->getUltimasLecturasParaIA((int)$datos['cuarto_id']);
+
+                    
+                    if (count($ultimas_lecturas) == $this->time_steps_ia) {
+                        
+                       
+                        $ia_result = $this->llamarServicioIA((int)$datos['cuarto_id'], $ultimas_lecturas);
+                        $ia_check_result = $ia_result;
+
+                        
+                        if ($ia_result && $ia_result['anomalia']) {
+                            
+                           
+                            global $alertController; 
+                            
+                            if ($alertController && method_exists($alertController, 'crearAlerta')) {
+                                $alertController->crearAlerta([
+                                    'cuarto_id' => (int)$datos['cuarto_id'],
+                                    'sensor_id' => (int)$datos['sensor_id'],
+                                    'tipo' => 'IA_ANOMALIA', 
+                                    'mensaje' => 'Detectado patrón de comportamiento anómalo por IA. Error: ' . number_format($ia_result['error_reconstruccion'], 4),
+                                    'valor_medido' => (float)$datos['temperatura_c'],
+                                    'contexto_json' => json_encode($ia_result) 
+                                ]);
+                            } else {
+        
+                                error_log("Alerta de IA detectada pero AlertController o metodo crearAlerta no está disponible.");
+                            }
+                        }
+                    }
+
+                } catch (Exception $e) {
+                    error_log("Error llamando al servicio de IA: " . $e->getMessage());
+                    $ia_check_result = ['error' => $e->getMessage()];
+                }
+                
                 return [
                     'success' => true,
                     'message' => 'Lectura registrada correctamente',
-                    'alertas' => $alertas
+                    'alertas_reglas' => $alertas, 
+                    'ia_check' => $ia_check_result 
                 ];
+
             } else {
                 return [
                     'success' => false,
@@ -159,6 +206,7 @@ class TemperatureController {
             ];
         }
     }
+
     public function getEstadisticas($cuartoId, $periodo = 'DAY') {
         try {
             if (!$cuartoId || !is_numeric($cuartoId)) {
@@ -234,6 +282,39 @@ class TemperatureController {
         } catch (Exception $e) {
             return ['success' => false, 'error' => 'Error al obtener datos para gráfica', 'message' => $e->getMessage()];
         }
+    }
+
+    private function llamarServicioIA($cuarto_id, $lecturas) {
+        $payload = json_encode([
+            'cuarto_id' => $cuarto_id,
+            'lecturas' => $lecturas // $lecturas ya es un array de [ {'temp..'}, {'temp..'} ]
+        ]);
+
+        $ch = curl_init($this->ai_service_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($payload)
+        ]);
+
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5); 
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+             throw new Exception("Error de cURL llamando a IA: " . $error);
+        }
+
+        if ($http_code != 200) {
+            throw new Exception("El servicio de IA falló. Código: $http_code. Respuesta: $response");
+        }
+
+        return json_decode($response, true); // Devuelve el array asociativo
     }
 }
 

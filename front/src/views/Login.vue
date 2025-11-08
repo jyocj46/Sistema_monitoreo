@@ -19,7 +19,7 @@
         <!-- Formulario -->
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="mb-3">
-            <label for="floatingInput" class="form-label">Correo electrónico</label>
+            <label for="floatingInput" class="loginform-label">Correo electrónico</label>
             <input
               type="email"
               class="form-control form-control-lg"
@@ -31,7 +31,7 @@
           </div>
           
           <div class="mb-3">
-            <label for="floatingPassword" class="form-label">Contraseña</label>
+            <label for="floatingPassword" class="loginform-label">Contraseña</label>
             <input
               type="password"
               class="form-control form-control-lg"

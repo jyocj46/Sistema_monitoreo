@@ -23,7 +23,7 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         scope: '/frontend/',
-        start_url: '/frontend/',
+        start_url: '/frontend/dashboard',
           ios: {
       'apple-mobile-web-app-capable': 'yes',
       'apple-mobile-web-app-status-bar-style': 'default',
@@ -51,6 +51,8 @@ export default defineConfig({
       },
 
       workbox: {
+            navigateFallback: '/frontend/index.html',
+    navigateFallbackDenylist: [/^\/api\//],
         importScripts: ['OneSignalSDKWorker.js']
       }
 

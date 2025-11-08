@@ -10,7 +10,8 @@ import Login from '../views/Login.vue'
 
 const routes = [
   {
-    path: '/',
+    path: '/dashboard',
+    alias: '/',    
     name: 'dashboard',
     component: Dashboard,
   },

@@ -9,8 +9,8 @@
         <router-link to="/reports">Reportes</router-link>
         <router-link to="/parametros">Parámetros</router-link> 
         <a href="https://fichas.detpon.com/welcome/vista/a05c7eadedddc6a7ec0d3aaacd228201/#" target="_blank" rel="noopener noreferrer">
-  Productos
-</a>
+        Productos
+        </a>
         <router-link to="/ajustes">Ajustes</router-link> 
         <router-link v-if="!isLoggedIn" to="/login">Login</router-link>     
         <a v-else @click="handleLogout" class="logout-button">

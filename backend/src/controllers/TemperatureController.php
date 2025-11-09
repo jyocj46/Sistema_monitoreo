@@ -14,7 +14,6 @@ class TemperatureController {
         $this->temperatureModel = new Temperature($pdo);
         $this->pdo = $pdo;
     }
-
     
     public function getLecturas(
         $sensorId = null,
@@ -99,6 +98,40 @@ class TemperatureController {
             ];
         }
     }
+
+    private function llamarServicioIA($cuarto_id, $lecturas) {
+        $payload = json_encode([
+            'cuarto_id' => $cuarto_id,
+            'lecturas' => $lecturas // $lecturas ya es un array de [ {'temp..'}, {'temp..'} ]
+        ]);
+
+        $ch = curl_init($this->ai_service_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($payload)
+        ]);
+
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20); 
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+             throw new Exception("Error de cURL llamando a IA: " . $error);
+        }
+
+        if ($http_code != 200) {
+            throw new Exception("El servicio de IA falló. Código: $http_code. Respuesta: $response");
+        }
+
+        return json_decode($response, true); // Devuelve el array asociativo
+    }    
+
     public function insertarLectura($datos) {
         try {
             // Validar datos requeridos
@@ -137,59 +170,62 @@ class TemperatureController {
         );
 
             if ($success) {
-                // Verificar alertas
-                $alertas = $this->temperatureModel->verificarAlertas(
-                    (int)$datos['cuarto_id'],
-                    (int)$datos['sensor_id'],
-                    (float)$datos['temperatura_c'],
-                    (float)$datos['humedad_pct']
-                );
+                  
+                global $alertController; // <--- ¡AÑADE ESTO!
+                if ($alertController && method_exists($alertController, 'verificarYGestionarAlertas')) {
+                    $alertController->verificarYGestionarAlertas($datos); // <--- ¡AÑADE ESTO!
+                } else {
+                    error_log("AlertController no encontrado o el método 'verificarYGestionarAlertas' no existe.");
+                }
+                           
+                $alertas_reglas = []; 
 
-            $ia_check_result = null; 
+                $ia_check_result = null; 
                 try {
                     
-                   
-                    $ultimas_lecturas = $this->getUltimasLecturasParaIA((int)$datos['cuarto_id']);
+                    $ultimas_lecturas = $this->temperatureModel->getUltimasLecturasParaIA(
+                        (int)$datos['cuarto_id'], 
+                        $this->time_steps_ia
+                    );
 
-                    
                     if (count($ultimas_lecturas) == $this->time_steps_ia) {
                         
-                       
                         $ia_result = $this->llamarServicioIA((int)$datos['cuarto_id'], $ultimas_lecturas);
-                        $ia_check_result = $ia_result;
+                        $ia_check_result = $ia_result; 
 
-                        
                         if ($ia_result && $ia_result['anomalia']) {
                             
                            
-                            global $alertController; 
+                            $sql_ia = "INSERT INTO alerta 
+                                        (cuarto_id, sensor_id, prioridad, variable, valor_medido, estado, abierta_en_utc, notas)
+                                   VALUES
+                                        (:cuarto_id, :sensor_id, :prioridad, :variable, :valor_medido, 'ABIERTA', UTC_TIMESTAMP(), :notas)";
                             
-                            if ($alertController && method_exists($alertController, 'crearAlerta')) {
-                                $alertController->crearAlerta([
-                                    'cuarto_id' => (int)$datos['cuarto_id'],
-                                    'sensor_id' => (int)$datos['sensor_id'],
-                                    'tipo' => 'IA_ANOMALIA', 
-                                    'mensaje' => 'Detectado patrón de comportamiento anómalo por IA. Error: ' . number_format($ia_result['error_reconstruccion'], 4),
-                                    'valor_medido' => (float)$datos['temperatura_c'],
-                                    'contexto_json' => json_encode($ia_result) 
-                                ]);
-                            } else {
-        
-                                error_log("Alerta de IA detectada pero AlertController o metodo crearAlerta no está disponible.");
-                            }
+                            $notas_ia = 'IA_ANOMALIA:: Patrón anómalo detectado. Error: ' . number_format($ia_result['error_reconstruccion'], 4);
+
+                            $stmt_ia = $this->pdo->prepare($sql_ia);
+                            $stmt_ia->execute([
+                                ':cuarto_id'    => (int)$datos['cuarto_id'],
+                                ':sensor_id'    => (int)$datos['sensor_id'],
+                                ':prioridad'    => 'MEDIA',
+                                ':variable'     => 'TEMPERATURA',
+                                ':valor_medido' => (float)$datos['temperatura_c'],
+                                ':notas'        => $notas_ia 
+                            ]);
                         }
                     }
 
                 } catch (Exception $e) {
-                    error_log("Error llamando al servicio de IA: " . $e->getMessage());
+                    error_log("Error en sección IA (Controller): " . $e->getMessage());
                     $ia_check_result = ['error' => $e->getMessage()];
                 }
+                
                 
                 return [
                     'success' => true,
                     'message' => 'Lectura registrada correctamente',
-                    'alertas_reglas' => $alertas, 
-                    'ia_check' => $ia_check_result 
+                    'alertas_reglas' => $alertas_reglas, 
+                    'ia_check' => $ia_check_result     
                 ];
 
             } else {
@@ -206,7 +242,6 @@ class TemperatureController {
             ];
         }
     }
-
     public function getEstadisticas($cuartoId, $periodo = 'DAY') {
         try {
             if (!$cuartoId || !is_numeric($cuartoId)) {
@@ -284,37 +319,6 @@ class TemperatureController {
         }
     }
 
-    private function llamarServicioIA($cuarto_id, $lecturas) {
-        $payload = json_encode([
-            'cuarto_id' => $cuarto_id,
-            'lecturas' => $lecturas // $lecturas ya es un array de [ {'temp..'}, {'temp..'} ]
-        ]);
-
-        $ch = curl_init($this->ai_service_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($payload)
-        ]);
-
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); 
-
-        $response = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        if ($error) {
-             throw new Exception("Error de cURL llamando a IA: " . $error);
-        }
-
-        if ($http_code != 200) {
-            throw new Exception("El servicio de IA falló. Código: $http_code. Respuesta: $response");
-        }
-
-        return json_decode($response, true); // Devuelve el array asociativo
-    }
+    
 }
 

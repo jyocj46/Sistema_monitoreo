@@ -30,13 +30,24 @@
       </section>
 
       <section class="cards">
-        <article v-for="r in ultimasPorCuarto" :class="['card', 'border-0',{ 'alert-media': r.prioridad === 'MEDIA' },{ 'alert-alta': r.prioridad === 'ALTA' },{ 'shadow-sm': !r.prioridad }]" :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`" class="card">
+        <article v-for="r in ultimasPorCuarto" :class="['card', 'border-0',
+          { 'alert-media': r.prioridad === 'MEDIA' },
+          { 'alert-alta': r.prioridad === 'ALTA' },
+          { 'alert-ia': r.prioridad === 'IA' },  { 'shadow-sm': !r.prioridad }
+        ]"
+        :key="`card-${r.cuarto_id ?? r.sensor_id ?? r.id}`"
+        class="card"
+        >
           <div class="card-head">
             <div class="head-left">
-                <span class="badge" :class="r.prioridad === 'ALTA' ? 'bg-danger' : (r.prioridad === 'MEDIA' ? 'bg-warning text-dark' : 'bg-primary')">{{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
+                <span  class="badge" :class="r.prioridad === 'ALTA' ? 'bg-danger': r.prioridad === 'MEDIA' ? 'bg-warning text-dark' : 'bg-primary'">
+                  {{ r?.codigo ?? r?.id ?? `S${r?.sensor_id ?? '?'}` }}</span>
                 <span class="ago text-muted">{{ fromNow(r?.tomado_en_utc) }}</span>
             </div>
             <div class="head-right">
+              <svg v-if="r.prioridad === 'IA'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="icon text-primary" title="Anomalía detectada por IA">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM9.5 14.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm5 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4z"/>
+              </svg>
               <svg viewBox="0 0 24 24" class="icon" :class="r.en_alerta ? 'text-danger' : 'text-secondary'">
                   <path d="M3 17h2v4H3zM7 13h2v8H7zM11 9h2v12h-2zM15 5h2v16h-2zM19 1h2v20h-2z"/>
               </svg>
@@ -57,8 +68,13 @@
           <div class="card-foot">
             <div>
               <div class="room fw-semibold">{{ roomName(r) }}</div>
-                <span class="pill"
-                      :class="r.prioridad === 'ALTA' ? 'bg-danger-subtle text-danger-emphasis' : (r.prioridad === 'MEDIA' ? 'bg-warning-subtle text-warning-emphasis' : 'bg-light text-secondary')">
+                <span class="pill" :class="r.prioridad === 'ALTA' 
+                        ? 'bg-danger-subtle text-danger-emphasis'
+                        : r.prioridad === 'MEDIA'
+                        ? 'bg-warning-subtle text-warning-emphasis'
+                        : r.prioridad === 'IA'
+                        ? 'bg-primary-subtle text-primary-emphasis'  
+                        : 'bg-light text-secondary'">
                   Humedad:
                   {{
                     r?.humedad_pct !== undefined && r?.humedad_pct !== null

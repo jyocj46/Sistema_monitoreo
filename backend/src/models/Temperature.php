@@ -119,7 +119,53 @@ class Temperature {
                 WHERE rn = 1 AND s.activo = 1
                 ORDER BY x.cuarto_id ASC";
         }
-        return $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        $rows = $this->pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        $cuartoIds = [];
+        foreach ($rows as $r) {
+            if (isset($r['cuarto_id'])) {
+                $cuartoIds[(int)$r['cuarto_id']] = true;
+            }
+        }
+        $cuartoIds = array_keys($cuartoIds);
+        if (empty($cuartoIds)) {
+            return $rows;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($cuartoIds), '?'));
+        $sqlIa = "
+            SELECT DISTINCT cuarto_id
+            FROM alerta
+            WHERE notas LIKE 'IA_ANOMALIA::%'  
+            AND estado = 'ABIERTA'             
+            AND cuarto_id IN ($placeholders)
+        ";
+
+        $iaPorCuarto = [];
+        try {
+            $stmtIa = $this->pdo->prepare($sqlIa);
+            $stmtIa->execute($cuartoIds);
+            foreach ($stmtIa->fetchAll(PDO::FETCH_COLUMN, 0) as $cid) {
+                $iaPorCuarto[(int)$cid] = true;
+            }
+        } catch (\Throwable $e) {  
+            error_log("getUltimas: no se pudo evaluar IA_ANOMALIA: " . $e->getMessage());
+            return $rows;
+        }
+
+        if (empty($iaPorCuarto)) {
+            return $rows;
+        }
+        foreach ($rows as &$r) {
+            $cid = isset($r['cuarto_id']) ? (int)$r['cuarto_id'] : null;
+            if ($cid !== null && isset($iaPorCuarto[$cid])) {
+                $r['prioridad'] = 'IA'; 
+            }
+        }
+        unset($r);
+
+        return $rows;
     }
 
     
@@ -201,7 +247,7 @@ class Temperature {
 
     public function verificarAlertas(int $roomId, int $sensorId, float $temperature, float $humidity): array {
         $sql = "SELECT temp_min_c, temp_max_c, hum_min_pct, hum_max_pct, hysteresis_c
-                FROM alert_rules
+                FROM parametro_cuarto
                 WHERE room_id = :room_id
                   AND (sensor_id = :sensor_id OR sensor_id IS NULL)
                   AND enabled = 1
@@ -292,17 +338,18 @@ class Temperature {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function getUltimasLecturasParaIA($cuarto_id) {
+    public function getUltimasLecturasParaIA($cuarto_id, $limit) {
         $sql = "SELECT temperatura_c, humedad_pct 
-                FROM lecturas 
+                FROM lectura 
                 WHERE cuarto_id = ? 
                 ORDER BY tomado_en_utc DESC 
                 LIMIT ?";
         
-        
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$cuarto_id, $this->time_steps_ia]);
+        $stmt->execute([$cuarto_id, $limit]);  
         $lecturas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return array_reverse($lecturas); 
+        return array_reverse($lecturas);  
     }
+
+
 }
